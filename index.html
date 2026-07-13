@@ -1,0 +1,2019 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bkmgLab — 공급 흐름 / Supply Flow</title>
+<link rel="stylesheet" href="assets/fonts/inter.css">
+<link rel="stylesheet" href="assets/fonts/krub.css">
+<style>
+  /* x12y12px MaruMinya — a 12×12 pixel Hangul face (OFL-1.1), self-hosted.
+     Full Hangul + Latin, so it carries both languages of the display titles.
+     License text: assets/fonts/x12y12pxMaruMinyaHangul-OFL.txt */
+  @font-face{
+    font-family:'MaruMinya';
+    src:url('assets/fonts/x12y12pxMaruMinyaHangul.woff2') format('woff2');
+    font-weight:normal;font-style:normal;font-display:swap;
+  }
+  :root{
+    /* Inter for headings, Krub for body. Neither ships Hangul, so Korean
+       deliberately falls through to Pretendard / Apple SD Gothic Neo. */
+    --font-head:'Inter','Pretendard','Apple SD Gothic Neo',-apple-system,"Helvetica Neue",sans-serif;
+    --font-body:'Krub','Pretendard','Apple SD Gothic Neo',-apple-system,"Helvetica Neue",sans-serif;
+    /* pixel display face for the big titles; falls back to the heading stack */
+    --font-title:'MaruMinya',var(--font-head);
+
+    --bg:#e8f0f7;          /* must match scene C.bg */
+    --bg-alt:#f2f7fb;
+    --paper:#fbfcfd;
+    --ink:#0b1020;
+    --ink-2:#3d4757;
+    --ink-soft:#79859a;
+    --accent:#3455fa;
+    --warm:#ff5a4d;
+    --line:#d3dde8;
+    --dark:#080b18;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.6;
+  }
+  /* everything structural — headings, the wordmark, numerals, labels — is Inter */
+  h1,h2,h3,h4,h5,
+  .nav .logo, .nav .cta, .lang .opt,
+  .step .num, .step .ttl,
+  .eyebrow, .stat .v, .btn, .q .head, .ticker-label, .fgrid h5{
+    font-family:var(--font-head);
+  }
+  /* the big display titles wear the pixel face */
+  h1, h3.big{ font-family:var(--font-title); }
+  /* the step's primary title too (the .en subtitle label stays Inter) */
+  .step .ttl > span:not(.en){ font-family:var(--font-title); letter-spacing:0; }
+
+  /* ---------- fixed 3D stage ---------- */
+  #app{position:fixed;inset:0;z-index:0;overflow:hidden}
+  /* Force the canvas to fill its box regardless of what three.js writes inline —
+     otherwise a stale drawing-buffer size leaves it stranded in the corner. */
+  #app canvas{display:block;width:100%!important;height:100%!important}
+
+  /* ---------- chrome ---------- */
+  /* three columns so the logo is centred on the PAGE, not on whatever's left over */
+  .nav{
+    position:fixed;top:0;left:0;right:0;z-index:50;
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+    padding:22px 38px;
+    transition:background .4s ease, color .4s ease;
+  }
+  .nav.on-dark{color:#fff}
+  .nav .logo{
+    grid-column:2;justify-self:center;
+    display:flex;align-items:center;line-height:0;
+    transition:transform .55s cubic-bezier(.5,.05,.2,1);
+  }
+  /* past the partner ticker the centred mark slides to the right edge, tucking
+     just left of the language toggle + CTA. The translate is applied inline in
+     JS (measured per width); the transition here animates the slide. */
+  /* the real wordmark. Two files, cross-faded, so it stays legible when the nav
+     flips to light type over the dark sections. */
+  .nav .logo img{
+    height:31px;width:auto;display:block;
+    transition:opacity .4s ease;
+  }
+  .nav .logo .light{position:absolute;opacity:0}
+  .nav.on-dark .logo .dark{opacity:0}
+  .nav.on-dark .logo .light{opacity:1}
+  .nav .right{grid-column:3;justify-self:end}
+  .nav a{color:inherit;text-decoration:none;opacity:.72;transition:opacity .2s}
+  .nav a:hover{opacity:1}
+  .nav .cta{
+    background:var(--dark);color:#fff;border-radius:100px;
+    padding:10px 20px;font-size:12px;font-weight:600;opacity:1;
+    transition:background .22s ease, color .22s ease, box-shadow .22s ease;
+  }
+  .nav .cta:hover{ background:transparent;color:var(--dark);box-shadow:inset 0 0 0 1.5px var(--dark); }
+  .nav.on-dark .cta{background:#fff;color:var(--dark)}
+  .nav.on-dark .cta:hover{ background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px #fff; }
+
+  .nav .right{display:flex;align-items:center;gap:16px}
+  .lang{
+    display:flex;align-items:center;gap:2px;
+    border:1px solid var(--line);border-radius:100px;padding:3px;
+    background:rgba(255,255,255,.5);cursor:pointer;
+  }
+  .nav.on-dark .lang{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.08)}
+  .lang .opt{
+    font-size:11px;font-weight:600;letter-spacing:.06em;
+    padding:5px 10px;border-radius:100px;color:var(--ink-soft);
+    transition:background .25s ease, color .25s ease;
+  }
+  .lang .opt.on{background:var(--dark);color:#fff}
+  .lang .opt:not(.on):hover{background:var(--dark);color:#fff}
+  .lang .opt.on:hover{background:transparent;color:var(--dark);box-shadow:inset 0 0 0 1.5px var(--dark)}
+  .nav.on-dark .lang .opt{color:rgba(255,255,255,.6)}
+  .nav.on-dark .lang .opt.on{background:#fff;color:var(--dark)}
+  .nav.on-dark .lang .opt:not(.on):hover{background:#fff;color:var(--dark)}
+  .nav.on-dark .lang .opt.on:hover{background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px #fff}
+
+  @media(max-width:860px){ .nav{padding:16px 20px} }
+
+  main{position:relative;z-index:1}
+
+  /* ---------- hero ---------- */
+  .hero{
+    height:100vh;display:flex;flex-direction:column;justify-content:flex-end;
+    padding:0 38px 74px;
+  }
+  .hero h1{
+    font-size:clamp(28px,4.3vw,58px);line-height:1.16;letter-spacing:0;
+    font-weight:600;max-width:none;
+  }
+  .hero p{
+    margin-top:18px;max-width:46ch;color:var(--ink-2);font-size:15px;
+  }
+  .scrollcue{
+    margin-top:34px;font-size:10px;letter-spacing:.2em;color:var(--ink-soft);
+    text-transform:uppercase;display:flex;align-items:center;gap:10px;
+  }
+  .hero-inner{will-change:opacity,transform}
+  .scrollcue i{
+    display:block;width:1px;height:26px;background:var(--ink-soft);
+    animation:cue 1.8s ease-in-out infinite;transform-origin:top;
+  }
+  @keyframes cue{0%,100%{transform:scaleY(.3);opacity:.3}50%{transform:scaleY(1);opacity:1}}
+
+  /* ---------- scroll-driven flow: one sticky stepper ---------- */
+  #flow{position:relative;height:500vh}          /* 5 stages worth of scroll */
+  .stepper-wrap{
+    position:sticky;top:0;height:100vh;
+    display:flex;align-items:center;
+    padding:0 38px;
+  }
+  /* Sized so the PARAGRAPH column lands ~35% shorter than before.
+     The number gutter (52px) + gap (30px) don't hold text, so they're added back. */
+  .stepper{width:min(460px,38vw)}
+
+  .step{--p:0}
+  .step .row{
+    display:flex;align-items:center;gap:30px;
+    padding:9px 0;cursor:default;
+  }
+  .step .num{
+    flex:none;width:52px;height:52px;border-radius:15px;
+    display:grid;place-items:center;
+    font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;
+    color:var(--ink);background:transparent;
+    transition:background .45s ease, box-shadow .45s ease, transform .45s ease;
+  }
+  .step.on .num{
+    background:var(--paper);
+    box-shadow:0 10px 30px -14px rgba(11,16,32,.34);
+  }
+  .step .ttl{
+    font-size:16px;font-weight:600;letter-spacing:-.02em;
+    transition:font-size .45s cubic-bezier(.2,.7,.2,1), opacity .45s ease;
+    opacity:.62;
+    white-space:nowrap;   /* keep Korean + English subtitle on one line */
+  }
+  .step.on .ttl{font-size:clamp(24px,2.6vw,34px);opacity:1}
+  .step .ttl .en{
+    font-weight:400;color:var(--ink-soft);
+    font-size:.5em;letter-spacing:.1em;text-transform:uppercase;margin-left:.7em;
+    white-space:nowrap;   /* never split the English phrase itself */
+  }
+
+  .step .body{
+    display:grid;grid-template-columns:52px 1fr;gap:30px;
+    max-height:0;overflow:hidden;opacity:0;
+    transition:max-height .6s cubic-bezier(.2,.7,.2,1), opacity .45s ease;
+  }
+  .step.on .body{max-height:300px;opacity:1}
+  /* the rule fills as you scroll through this step */
+  .step .rule{
+    width:2px;margin:2px auto 14px;border-radius:2px;
+    background:linear-gradient(
+      to bottom,
+      var(--accent) 0 calc(var(--p) * 100%),
+      var(--line) calc(var(--p) * 100%) 100%
+    );
+  }
+  .step .body p{color:var(--ink-2);font-size:15px;line-height:1.62;padding-bottom:6px}
+  .step .body ul{list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:6px;padding-bottom:20px}
+  .step .body li{font-size:13px;color:var(--ink-soft);padding-left:15px;position:relative}
+  .step .body li:before{
+    content:"";position:absolute;left:0;top:8px;width:4px;height:4px;
+    border-radius:50%;background:var(--accent);
+  }
+
+  @media(max-width:860px){
+    .stepper{width:100%}
+    .step .row{gap:18px}
+    .step .num{width:42px;height:42px;border-radius:12px}
+    .step .body{grid-template-columns:42px 1fr;gap:18px}
+    /* on narrow screens allow a break between Korean and the English subtitle
+       (the phrase itself still stays intact), so the title can't overflow. */
+    .step .ttl{white-space:normal}
+  }
+
+  /* ---------- partner ticker (brought over from the bkmglab.com mockup) ---------- */
+  .ticker-sec{
+    background:var(--paper);position:relative;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:10px 0 0;
+  }
+  .ticker-label{
+    text-align:center;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--ink-soft);padding:16px 0 0;
+  }
+  .ticker{
+    overflow:hidden;padding:18px 0 24px;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+  }
+  .ticker-track{
+    display:flex;align-items:center;gap:62px;width:max-content;
+    animation:tick 26s linear infinite;
+  }
+  @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .ticker-track img{
+    height:30px;width:auto;max-width:132px;flex-shrink:0;object-fit:contain;
+    opacity:.6;transition:opacity .2s ease;
+    filter:grayscale(1);
+  }
+  .ticker-track img:hover{opacity:1;filter:grayscale(0)}
+  /* per-mark optical sizing — these logos don't share a common cap height */
+  .ticker-track img[alt="Subway"]{height:56.25px}
+  .ticker-track img[alt="KFC"]{height:52.5px}
+  .ticker-track img[alt="Dunkin'"]{height:50.6px}
+  .ticker-track img[alt="Shinsegae"]{max-width:110px;height:36px}
+  .ticker-track img[alt="Chipotle"]{height:39px}
+  /* raise The Hyundai so HYUNDAI sits on the row line (as if the "THE" weren't there) */
+  .ticker-track img[alt="The Hyundai"]{transform:translateY(-6px)}
+  @media(prefers-reduced-motion:reduce){ .ticker-track{animation:none} }
+
+  /* ---------- solid sections (these cover the canvas) ---------- */
+  .solid{background:var(--paper);position:relative}
+  .wrap{max-width:1180px;margin:0 auto;padding:120px 38px}
+
+  .eyebrow{
+    font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--ink-soft);margin-bottom:20px;
+  }
+  h3.big{
+    font-size:clamp(24px,3vw,40px);line-height:1.2;letter-spacing:0;
+    font-weight:600;max-width:26ch;
+  }
+
+  .reveal{opacity:0;transform:translateY(28px);
+    transition:opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1);}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ---------- round carousel (3D brand ring) ---------- */
+  .ring-stage{
+    margin-top:8px;
+    width:100%;height:600px;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+    /* perspective + cursor set from CFG */
+    touch-action:none;
+  }
+  /* the copy, parked in the middle of the ring. translateZ (depth) + a scale to
+     undo perspective foreshortening are applied in JS from the ring radius. */
+  .ring-center{
+    position:absolute;top:50%;left:50%;
+    width:min(660px,84vw);
+    transform:translate(-50%,-50%);   /* depth + scale appended in JS */
+    text-align:center;
+    pointer-events:none;   /* drags pass through to the stage */
+  }
+  .ring-center .eyebrow{margin-bottom:22px}
+  .ring-center h3.big{max-width:none;margin:0 auto}
+  .ring-center p{
+    margin:20px auto 0;max-width:48ch;
+    color:var(--ink-2);font-size:15px;line-height:1.6;
+    text-wrap:pretty;   /* avoid a lone syllable (다.) orphaned on the last line */
+  }
+  .ring-stage:active{cursor:grabbing}
+  /* Kill the browser's native drag-select + image-drag. user-select on the stage
+     alone isn't enough: images carry their own drag behaviour, and the selection
+     highlight still paints on the marks mid-drag. */
+  .ring-stage, .ring-stage *{
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-user-drag:none;
+    -webkit-touch-callout:none;
+  }
+  .ring-stage img{ -webkit-user-drag:none; user-drag:none; }
+  .ring-stage ::selection{background:transparent}
+  .ring-stage ::-moz-selection{background:transparent}
+  .ring-tilt{transform-style:preserve-3d}   /* rotateX set from CFG.tilt */
+  .ring{position:relative;transform-style:preserve-3d}
+  .ring-cell{position:absolute;inset:0;transform-style:preserve-3d}
+  /* No card. The logo IS the face — transparent PNG floating in the ring.
+     flex (not grid): the face has a definite height (inset:0), so max-height:100%
+     resolves against it reliably. In a centred grid the auto row track resolves
+     percentages inconsistently and tall logos overflow instead of centring. */
+  .ring-face{
+    position:absolute;inset:0;
+    backface-visibility:hidden;
+    display:flex;align-items:center;justify-content:center;
+    padding:8px;
+  }
+  .ring-face.back{transform:rotateY(180deg);opacity:var(--ring-back-opacity,.28)}
+  .ring-face img{
+    max-width:calc(100% * var(--logo-scale,1));
+    max-height:calc(100% * var(--logo-scale,1));
+    width:auto;height:auto;
+    object-fit:contain;object-position:center;
+    pointer-events:none;
+    /* a whisper of shadow so the marks sit in space rather than lying flat */
+    filter:drop-shadow(0 10px 18px rgba(11,16,32,.14));
+  }
+  /* placeholder for a brand whose logo file isn't here yet */
+  .ring-face.pending{
+    border:1px dashed var(--line);border-radius:18px;background:rgba(255,255,255,.4);
+  }
+  .ring-face.pending span{
+    font-family:var(--font-head);
+    font-size:19px;font-weight:600;letter-spacing:-.01em;color:var(--ink-soft);
+    text-align:center;line-height:1.3;
+  }
+  .ring-face.pending small{
+    display:block;margin-top:8px;
+    font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#aab6c4;
+  }
+  .ring-hint{
+    margin-top:10px;text-align:center;
+    font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);
+  }
+  @media(max-width:700px){ .ring-stage{height:320px} }
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-top:56px}
+  .stat .v{
+    font-size:clamp(32px,4vw,52px);font-weight:600;letter-spacing:-.03em;
+    color:var(--accent);font-variant-numeric:tabular-nums;
+  }
+  .stat .l{font-size:13px;color:var(--ink-soft);margin-top:4px}
+  @media(max-width:700px){ .stats{grid-template-columns:1fr;gap:26px} }
+
+  /* split */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:start}
+  @media(max-width:900px){ .split{grid-template-columns:1fr;gap:40px} }
+
+  /* FAQ */
+  .faq{border-top:1px solid var(--line)}
+  .q{border-bottom:1px solid var(--line);cursor:pointer}
+  .q .head{
+    display:flex;justify-content:space-between;align-items:center;gap:20px;
+    padding:22px 0;font-size:15px;font-weight:600;letter-spacing:-.01em;
+  }
+  .q .sign{
+    flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);
+    display:grid;place-items:center;font-size:13px;color:var(--ink-soft);
+    transition:transform .35s ease, background .3s, color .3s;
+  }
+  .q.open .sign{transform:rotate(45deg);background:var(--accent);color:#fff;border-color:var(--accent)}
+  .q .body{
+    max-height:0;overflow:hidden;
+    transition:max-height .45s cubic-bezier(.2,.7,.2,1);
+  }
+  .q.open .body{max-height:260px}
+  .q .body p{padding:0 0 22px;color:var(--ink-2);font-size:14px;max-width:62ch}
+
+  /* dark CTA + footer */
+  .dark-sec{background:var(--dark);color:#fff}
+  .dark-sec h3.big{max-width:22ch}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;margin-top:34px;
+    background:#fff;color:var(--dark);border-radius:100px;
+    padding:15px 28px;font-size:14px;font-weight:600;text-decoration:none;
+    transition:transform .25s ease;
+  }
+  .btn:hover{transform:translateY(-2px)}
+  footer{background:var(--dark);color:#fff;border-top:1px solid rgba(255,255,255,.1)}
+  .fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;padding-bottom:60px}
+  .fgrid h5{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.5;margin-bottom:16px}
+  .fgrid a{display:block;color:#fff;text-decoration:none;opacity:.8;font-size:14px;padding:5px 0}
+  .fgrid a:hover{opacity:1}
+  /* contact info blocks carried over from fire.bkmglab.com's footer */
+  .finfo{color:#fff;opacity:.74;font-size:13px;line-height:2.05;margin:0}
+  .finfo a{display:inline;padding:0;opacity:1;
+    border-bottom:1px solid rgba(255,255,255,.3);}
+  .finfo a:hover{border-color:#fff}
+  .fbot{
+    border-top:1px solid rgba(255,255,255,.1);padding:26px 0;
+    display:flex;justify-content:space-between;font-size:11px;opacity:.45;
+  }
+  @media(max-width:700px){ .fgrid{grid-template-columns:1fr} .fbot{flex-direction:column;gap:8px} }
+  /* ---------- nationwide service network — scroll-driven map story ---------- */
+  #netflow{ position:relative; height:520vh; background:var(--bg-alt); }   /* overview + 4 phases */
+  .net-sticky{ position:sticky; top:0; height:100vh; overflow:hidden; }
+  .net-sticky canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  /* left scrim so the copy always reads over the map */
+  .net-copy{ position:absolute; inset:0; pointer-events:none; display:flex; align-items:center;
+    background:linear-gradient(90deg, var(--bg-alt) 0%, var(--bg-alt) 20%, rgba(242,247,251,0) 52%); }
+  .net-panel{ position:absolute; left:clamp(24px,6vw,96px); width:min(430px,44vw);
+    opacity:0; transform:translateY(20px); transition:opacity .7s ease, transform .7s ease; }
+  .net-panel.on{ opacity:1; transform:none; }
+  .net-title{ font-family:var(--font-title); letter-spacing:0; font-weight:600;
+    font-size:clamp(22px,2.7vw,36px); line-height:1.22; }
+  .net-sub{ margin-top:18px; max-width:32ch; color:var(--ink-2); font-size:15px; line-height:1.72; }
+  @media(max-width:700px){
+    .net-copy{ align-items:flex-start; padding-top:11vh;
+      background:linear-gradient(180deg, var(--bg-alt) 0%, rgba(242,247,251,.72) 42%, rgba(242,247,251,0) 72%); }
+    .net-panel{ width:auto; right:clamp(24px,6vw,96px); }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<nav class="nav" id="nav">
+  <div class="logo">
+    <img class="dark"  src="assets/bkmglab-black.png" alt="bkmgLab">
+    <img class="light" src="assets/bkmglab-white.png" alt="" aria-hidden="true">
+  </div>
+  <div class="right">
+    <button class="lang" id="lang" aria-label="Language">
+      <span class="opt" data-l="ko">KO</span>
+      <span class="opt" data-l="en">EN</span>
+    </button>
+    <a href="#contact" class="cta" data-ko="견적 문의" data-en="Get a Quote"></a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner" id="heroInner">
+      <h1 data-ko="주방까지 닿는<br>하나의 공급 흐름."
+          data-en="One supply flow,<br>all the way to the kitchen."></h1>
+      <p data-ko="식자재부터 주방 장비까지. 세계 최고의 프랜차이즈가 선택한 주방 솔루션을 만듭니다. 1988년부터, F&amp;B 산업이 먼저 찾는 소싱 파트너."
+         data-en="From ingredients to kitchen equipment, we help build the kitchens behind the world's finest franchises. The F&amp;B industry's sourcing partner of choice since 1988."></p>
+      <div class="scrollcue"><i></i> <span data-ko="스크롤해서 흐름 보기" data-en="Scroll to follow the flow"></span></div>
+    </div>
+  </section>
+
+  <!-- SCROLL-DRIVEN FLOW — one sticky stepper, active step expands -->
+  <div id="flow">
+    <div class="stepper-wrap">
+      <div class="stepper" id="stepper">
+
+        <div class="step" data-i="0">
+          <div class="row">
+            <span class="num">01</span>
+            <span class="ttl"><span data-ko="파트너십" data-en="Partnership"></span><span class="en" data-ko="Partnership" data-en="파트너십"></span></span>
+          </div>
+          <div class="body">
+            <div class="rule"></div>
+            <div>
+              <p data-ko="기준을 만드는 운영자들과 함께 일합니다. 프랜차이즈 본사와 가맹점주가 저희를 찾을 때, 손에 들려 있는 것은 대개 발주서가 아니라 하나의 문제입니다. 새 메뉴가 요구하는 장비, 규모를 견뎌야 하는 공급 라인. 그 문제를 함께 풀고 나면, 소싱은 자연스럽게 따라옵니다."
+                 data-en="We work alongside the operators who set the standard. When a franchise headquarters or a store owner comes to us, they rarely arrive with a purchase order — they arrive with a problem. A new menu that demands new equipment. A supply line that has to hold at scale. We solve it together, and the sourcing follows from there."></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-i="1">
+          <div class="row">
+            <span class="num">02</span>
+            <span class="ttl"><span data-ko="소싱" data-en="Sourcing"></span><span class="en" data-ko="Sourcing" data-en="소싱"></span></span>
+          </div>
+          <div class="body">
+            <div class="rule"></div>
+            <div>
+              <p data-ko="가장 쉬운 답이 아니라 가장 좋은 답을 찾습니다. 오피스 팀, 테스트 키친, 창고, 그리고 한반도 전역을 잇는 서비스 네트워크. 국내 최대 프랜차이즈의 성장을 뒷받침하는 바로 그 팀이, 이제 막 이름을 알리기 시작한 브랜드도 함께 키웁니다."
+                 data-en="Our commitment is to the best answer, not the easiest one. An office team, a test kitchen, a warehouse, and a service network reaching every corner of the Korean peninsula. The same bench that helps the country's largest franchises keep growing is the one that incubates the names about to become its next stars."></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-i="2">
+          <div class="row">
+            <span class="num">03</span>
+            <span class="ttl"><span data-ko="제조" data-en="Manufacturing"></span><span class="en" data-ko="Manufacturing" data-en="제조"></span></span>
+          </div>
+          <div class="body">
+            <div class="rule"></div>
+            <div>
+              <p data-ko="폭넓은 제조 파트너 포트폴리오 덕분에, 기존 제품에만 기댈 필요가 없습니다. 카탈로그에서 답을 찾지 못하는 요구라면, 그 요구에 맞춰 만듭니다. 하나의 주방을 위해 설계된, 하나뿐인 솔루션."
+                 data-en="A broad portfolio of manufacturing partners means we are rarely confined to what already exists. When a customer's needs don't fit the catalogue, we build to fit the customer instead — a custom solution, made for one kitchen."></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-i="3">
+          <div class="row">
+            <span class="num">04</span>
+            <span class="ttl"><span data-ko="운송 · 통합" data-en="Shipping &amp; Consolidation"></span><span class="en" data-ko="Shipping &amp; Consolidation" data-en="운송 · 통합"></span></span>
+          </div>
+          <div class="body">
+            <div class="rule"></div>
+            <div>
+              <p data-ko="bkmgLab 캘리포니아 오피스가 화물을 통합하고, 전체 운영의 물류 두뇌 역할을 맡습니다. 폭넓은 포워더 네트워크로 세계 어느 곳으로든 솔루션 도착을 조율합니다."
+                 data-en="Our California office handles consolidation and serves as the logistics brain of the entire operation. Through an expansive network of forwarders, we can coordinate the delivery of a solution to any corner of the world."></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" data-i="4">
+          <div class="row">
+            <span class="num">05</span>
+            <span class="ttl"><span data-ko="설치" data-en="Installation"></span><span class="en" data-ko="Installation" data-en="설치"></span></span>
+          </div>
+          <div class="body">
+            <div class="rule"></div>
+            <div>
+              <p data-ko="솔루션은 고객의 문 앞까지 갑니다. 직영점이든 가맹점이든 다르지 않습니다. 전국 A/S 네트워크로 현장에 설치한 모든 장비를 추적하고 관리합니다. 저희에게 거래는 설치와 함께 끝나지 않습니다. 바로 그때 시작됩니다."
+                 data-en="Solutions are delivered to our customers' door — corporate store or franchise store, it makes no difference. With an after-sales network spanning the country, every piece of equipment we install in the field is tracked and cared for. For us, the sale does not end at installation. We believe that is where it begins."></p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTNER TICKER -->
+  <section class="ticker-sec" id="ticker">
+    <div class="ticker-label" data-ko="Trusted by franchise kitchens" data-en="Trusted by franchise kitchens"></div>
+    <div class="ticker">
+      <div class="ticker-track" id="tickerTrack">
+        <img src="assets/brandlogos/starbucks.svg"   alt="Starbucks">
+        <img src="assets/brandlogos/subway.png"      alt="Subway">
+        <img src="assets/brandlogos/kfc.svg"         alt="KFC">
+        <img src="assets/brandlogos/dunkin.png"      alt="Dunkin'">
+        <img src="assets/brandlogos/tacobell.svg"    alt="Taco Bell">
+        <img src="assets/brandlogos/auntieannes.png" alt="Auntie Anne's">
+        <img src="assets/brandlogos/chipotle.png"    alt="Chipotle">
+        <img src="assets/brandlogos/chagee.png"      alt="CHAGEE">
+        <img src="assets/brandlogos/thehyundai.svg"  alt="The Hyundai">
+        <img src="assets/brandlogos/shinsegae.png"   alt="Shinsegae">
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section class="solid" id="why">
+    <div class="wrap">
+      <div class="ring-stage reveal" id="ringStage">
+        <div class="ring-tilt">
+          <!-- text lives at the cylinder's centre depth, so near logos pass in
+               front of it and far logos pass behind (and dim). transform set in JS. -->
+          <div class="ring-center" id="ringCenter">
+            <div class="eyebrow" data-ko="취급 브랜드" data-en="Brands we carry"></div>
+            <h3 class="big" data-ko="우리의 브랜드 유니버스."
+                            data-en="Our Brands Universe."></h3>
+            <p data-ko="여기 있는 제조사들은 수십 년 동안 F&amp;B 산업의 주방을 지켜온 이름입니다. 유행을 따라 생겼다 사라지는 브랜드가 아니라, 세대를 넘겨 검증된 장비를 만들어 온 회사들입니다. bkmgLab은 이들을 정식 채널로 들여옵니다."
+               data-en="The manufacturers in this ring have served the F&amp;B industry for decades — several for the better part of a century. These are not names that arrived with a trend and left with it. They are the companies whose equipment has been proven across generations of kitchens, and we bring every one of them in through official channels."></p>
+          </div>
+          <div class="ring" id="ring"></div>
+        </div>
+      </div>
+      <div class="ring-hint" data-ko="드래그해서 돌려보세요" data-en="Drag to spin"></div>
+    </div>
+  </section>
+
+  <!-- NATIONWIDE SERVICE NETWORK — scroll-driven map story -->
+  <section id="netflow">
+    <div class="net-sticky" id="krStage">
+      <canvas id="krCanvas"></canvas>
+      <div class="net-copy">
+        <div class="net-panel" data-p="ov">
+          <h3 class="net-title" data-ko="서울에서 제주까지,<br>전국을 아우릅니다."
+                                data-en="From Seoul to Jeju,<br>we cover the whole country."></h3>
+          <p class="net-sub" data-ko="bkmgLab의 서비스망은 수도권부터 제주도까지 전국에 닿아 있습니다."
+                             data-en="bkmgLab's service network reaches every corner of the country — from the capital region all the way down to Jeju Island."></p>
+        </div>
+        <div class="net-panel" data-p="0">
+          <h3 class="net-title" data-ko="모든 서비스콜은<br>여기서 시작됩니다."
+                                data-en="Every service call<br>starts here."></h3>
+          <p class="net-sub" data-ko="경기 고양 본사가 전국에 설치된 모든 장비의 서비스 요청을 접수하고, 처리 전 과정을 관리합니다."
+                             data-en="Our head office in Goyang takes in every service request for the equipment we've installed across the country, and manages the whole process."></p>
+        </div>
+        <div class="net-panel" data-p="1">
+          <h3 class="net-title" data-ko="가장 가까운 전문가를<br>현장으로 보냅니다."
+                                data-en="We send the nearest<br>specialist to the site."></h3>
+          <p class="net-sub" data-ko="서비스콜이 접수되면 해당 지역 서비스 전문 법인으로 연결해 전문가를 곧바로 현장에 파견합니다."
+                             data-en="The moment a call lands, we route it to that region's service company and dispatch a specialist straight to the site."></p>
+        </div>
+        <div class="net-panel" data-p="2">
+          <h3 class="net-title" data-ko="그 지역은<br>그 팀이 책임집니다."
+                                data-en="One team owns<br>the whole region."></h3>
+          <p class="net-sub" data-ko="지역 서비스 전문가가 그 권역의 모든 매장을 맡습니다. 한 번 설치한 장비는 계속 그 팀이 돌봅니다."
+                             data-en="The regional specialist takes on every store in that territory — once we install it, that same team keeps caring for it."></p>
+        </div>
+        <div class="net-panel" data-p="3">
+          <h3 class="net-title" data-ko="판매는 끝이 아니라<br>시작입니다."
+                                data-en="The sale isn't the end.<br>It's the beginning."></h3>
+          <p class="net-sub" data-ko="bkmgLab은 제품이 고객에게 전달되는 순간을 거래의 끝이 아니라 진짜 시작으로 봅니다. 우리는 그 믿음 위에 전국 서비스망을 세웠습니다."
+                             data-en="At bkmgLab we believe the moment a product reaches the customer is not the end of the deal — it's where it truly begins. We built our nationwide service network on that belief."></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STANDARDS / STATS -->
+  <section class="solid" style="background:var(--bg-alt)">
+    <div class="wrap split">
+      <div class="reveal">
+        <div class="eyebrow" data-ko="운영 기준" data-en="How we operate"></div>
+        <h3 class="big" data-ko="주방이 멈추면 매출이 멈춥니다."
+                        data-en="When the kitchen stops, revenue stops."></h3>
+      </div>
+      <div class="reveal">
+        <p style="color:var(--ink-2);font-size:15px"
+           data-ko="장비 한 대가 서면 그날 영업이 흔들립니다. bkmgLab은 설치 이력과 부품 재고를 함께 관리해 고장 접수부터 부품 출고까지 시간을 줄입니다."
+           data-en="One machine down can shake a whole day's trade. bkmgLab holds install history and parts stock together, which is how we cut the time from fault report to part shipped."></p>
+        <div class="stats">
+          <div class="stat"><div class="v" data-count="3800">0</div>
+            <div class="l" data-ko="프랜차이즈 브랜드 DB" data-en="Franchise brands in our DB"></div></div>
+          <div class="stat"><div class="v" data-count="24">0</div>
+            <div class="l" data-ko="시간 내 견적 회신" data-en="Hours to quote"></div></div>
+          <div class="stat"><div class="v" data-count="100">0</div>
+            <div class="l" data-ko="% 정식 수입 채널" data-en="% official import channels"></div></div>
+        </div>
+        <p style="color:var(--ink-soft);font-size:11px;margin-top:24px"
+           data-ko="* 위 수치는 데모용 자리표시자입니다. 실제 수치로 교체하세요."
+           data-en="* Placeholder figures for the demo. Replace with real numbers."></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="solid" id="faq">
+    <div class="wrap split">
+      <div class="reveal">
+        <div class="eyebrow" data-ko="자주 묻는 질문" data-en="FAQ"></div>
+        <h3 class="big" data-ko="궁금할 만한 것들." data-en="The things people ask."></h3>
+      </div>
+      <div class="faq reveal" id="faqlist">
+        <div class="q">
+          <div class="head"><span data-ko="주문하면 얼마나 걸리나요?" data-en="How long does an order take?"></span><span class="sign">+</span></div>
+          <div class="body"><p data-ko="국내 재고 품목은 접수 후 영업일 기준 1–2일 내 출고됩니다. 수입 장비는 모델과 선적 일정에 따라 달라지며, 견적 단계에서 도착 예정일을 함께 안내합니다."
+                               data-en="Items in domestic stock ship within 1–2 business days. Imported equipment depends on the model and the sailing schedule; we give you an ETA at the quote stage."></p></div>
+        </div>
+        <div class="q">
+          <div class="head"><span data-ko="식자재와 장비를 같이 주문할 수 있나요?" data-en="Can I order ingredients and equipment together?"></span><span class="sign">+</span></div>
+          <div class="body"><p data-ko="네. 같은 창구로 접수되고, 창고에서 매장 단위로 분류해 함께 배송합니다. 정산도 하나로 묶입니다."
+                               data-en="Yes. They come through the same channel, get sorted by store at the warehouse, and ship together. Billing is consolidated too."></p></div>
+        </div>
+        <div class="q">
+          <div class="head"><span data-ko="설치와 A/S는 어떻게 되나요?" data-en="What about installation and service?"></span><span class="sign">+</span></div>
+          <div class="body"><p data-ko="장비는 배송 후 설치와 시운전을 진행하고, 사용 교육을 마친 뒤 인계합니다. 설치 이력이 남아 이후 A/S 요청 시 모델과 설치일을 바로 조회할 수 있습니다."
+                               data-en="Equipment is installed and commissioned after delivery, and handed over only once your team has been trained. Because the install is on record, any later service request pulls up the model and install date immediately."></p></div>
+        </div>
+        <div class="q">
+          <div class="head"><span data-ko="단일 매장도 거래할 수 있나요?" data-en="Do you work with single stores?"></span><span class="sign">+</span></div>
+          <div class="body"><p data-ko="가능합니다. 프랜차이즈 본사뿐 아니라 개인 매장도 같은 흐름으로 처리합니다."
+                               data-en="Yes. Franchise headquarters and independent stores go through exactly the same flow."></p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="dark-sec" id="contact">
+    <div class="wrap">
+      <div class="reveal">
+        <h3 class="big" data-ko="주문은 한 번, 나머지는 저희가."
+                        data-en="Order once. We'll take it from there."></h3>
+        <a href="#" class="btn" data-ko="견적 문의하기 →" data-en="Request a quote →"></a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap" style="padding-bottom:0">
+      <div class="fgrid">
+        <div>
+          <h5 data-ko="회사" data-en="Company"></h5>
+          <p class="finfo">
+            <span data-ko="(주)비케이엠지 | bkmgLab" data-en="BKMG Co., Ltd. | bkmgLab"></span><br>
+            <span data-ko="대표 | 이병욱" data-en="CEO | Lee Byung-wook"></span><br>
+            <span>tel | <a href="tel:1600-6306">1600-6306</a></span><br>
+            <span>mail | <a href="mailto:info@bkmglab.com">info@bkmglab.com</a></span><br>
+            <span data-ko="office | GIFC 타워 킨텍스로 240 902호" data-en="office | GIFC Tower, 240 Kintex-ro, #902"></span><br>
+            <span data-ko="경기도 고양시 일산서구" data-en="Ilsanseo-gu, Goyang, Gyeonggi-do"></span>
+          </p>
+        </div>
+        <div>
+          <h5 data-ko="테스트 키친 | 예약" data-en="Test Kitchen | Booking"></h5>
+          <p class="finfo">
+            <span data-ko="test kitchen | GIFC 타워 킨텍스로 240 102-103호" data-en="test kitchen | GIFC Tower, 240 Kintex-ro, #102-103"></span><br>
+            <span data-ko="경기도 고양시 일산서구" data-en="Ilsanseo-gu, Goyang, Gyeonggi-do"></span><br>
+            <span><a href="tel:1600-6306">1600-6306</a></span><br>
+            <span data-ko="카카오: bkmglab" data-en="KakaoTalk: bkmglab"></span><br>
+            <span data-ko="09:00 - 18:00 연중무휴" data-en="09:00 – 18:00, open daily"></span>
+          </p>
+        </div>
+        <div>
+          <h5 data-ko="계좌 정보" data-en="Bank Info"></h5>
+          <p class="finfo">
+            <span data-ko="하나은행 | 비케이엠지" data-en="Hana Bank | BKMG"></span><br>
+            <span>161-910006-39304</span>
+          </p>
+        </div>
+      </div>
+      <div class="fbot">
+        <span>Copyright © bkmgLab. All Rights Reserved.</span>
+        <span data-ko="식자재 &amp; 장비 · 대한민국 F&amp;B" data-en="Ingredients &amp; Equipment · F&amp;B Korea"></span>
+      </div>
+    </div>
+  </footer>
+
+</main>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/" } }
+</script>
+
+<script type="module">
+/* Always open on the hero. Browsers restore the previous scroll offset on
+   refresh, which would drop you into the middle of the flow — and because the
+   camera and hero fade are both driven by scrollY, it would also start with the
+   3D scene mid-flight and the headline already faded out. */
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+const toTop = () => window.scrollTo(0, 0);
+toTop();
+addEventListener('load', toTop);
+addEventListener('pageshow', (e) => { if (e.persisted) toTop(); });   // bfcache back/forward
+
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/RoundedBoxGeometry.js';
+
+/* ============================================================
+   bkmgLab — Supply Flow
+   Isometric clay-render scene, camera driven by page scroll.
+   All geometry generated here.
+   Flow: STORE → bkmgLab → WAREHOUSE → PORT/SHIP → TRUCK → STORE
+   ============================================================ */
+
+const C = {
+  bg:0xe8f0f7, ground:0xf6f9fc, groundDot:0xdde8f1,
+  shell:0xf7fafc, shell2:0xecf2f7, shell3:0xdfe8f0,
+  accent:0x3455fa, warm:0xff5a4d, water:0x9ac7e4, foliage:0xeef4f9,
+};
+
+const app = document.getElementById('app');
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(C.bg);
+// Fog must start beyond the far corner (the port sits ~105 units out),
+// otherwise it bleaches the ship and sea into the background.
+scene.fog = new THREE.Fog(C.bg, 230, 430);
+
+/* ---------- isometric camera ---------- */
+const FRUSTUM = 42;
+let aspect = innerWidth / innerHeight;
+const camera = new THREE.OrthographicCamera(
+  -FRUSTUM*aspect/2, FRUSTUM*aspect/2, FRUSTUM/2, -FRUSTUM/2, 0.1, 400
+);
+
+/* ---------- light ---------- */
+scene.add(new THREE.HemisphereLight(0xffffff, 0xc4d8e8, 1.35));
+const key = new THREE.DirectionalLight(0xffffff, 2.25);
+key.position.set(46, 66, 38);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.radius = 5;
+key.shadow.bias = -0.0008;
+const S = 78;
+Object.assign(key.shadow.camera, { left:-S, right:S, top:S, bottom:-S, near:1, far:240 });
+key.shadow.camera.updateProjectionMatrix();
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xe6f1fb, 0.62);
+fill.position.set(-48, 26, -40);
+scene.add(fill);
+
+/* ---------- materials ---------- */
+const clay = (color, o={}) => new THREE.MeshStandardMaterial({
+  color, roughness:o.rough ?? 0.92, metalness:0, ...o.extra
+});
+const M = {
+  shell: clay(C.shell), shell2: clay(C.shell2), shell3: clay(C.shell3),
+  accent: clay(C.accent,{rough:.55}), warm: clay(C.warm,{rough:.6}),
+  glass: clay(0xcfdcea,{rough:.35}), leaf: clay(C.foliage), person: clay(0xdfe7ee),
+};
+const rbox = (w,h,d, mat=M.shell, r=0.16) => {
+  const m = new THREE.Mesh(new RoundedBoxGeometry(w,h,d,3, Math.min(r, Math.min(w,h,d)/2.05)), mat);
+  m.castShadow = true; m.receiveShadow = true; return m;
+};
+const put = (m,x,y,z) => { m.position.set(x,y,z); return m; };
+
+/* ---------- ground ---------- */
+const ground = new THREE.Mesh(new THREE.CircleGeometry(110, 96), clay(C.ground,{rough:1}));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+{
+  const inst = new THREE.InstancedMesh(new THREE.CircleGeometry(0.34,12), clay(C.groundDot,{rough:1}), 620);
+  const d = new THREE.Object3D();
+  for (let n=0; n<620; n++){
+    const a = Math.random()*Math.PI*2, r = 8 + Math.pow(Math.random(),.65)*95;
+    d.position.set(Math.cos(a)*r, 0.02, Math.sin(a)*r);
+    d.rotation.set(-Math.PI/2,0,0);
+    const s = .5 + Math.random()*.9; d.scale.set(s,s,1);
+    d.updateMatrix(); inst.setMatrixAt(n, d.matrix);
+  }
+  inst.receiveShadow = true; scene.add(inst);
+}
+
+/* ---------- node positions ---------- */
+// Spread wide — each node gets its own air.
+const P = {
+  store: new THREE.Vector3( 26, 0, 18),
+  hq:    new THREE.Vector3(  0, 0,  0),
+  ware:  new THREE.Vector3(-26, 0, 12),
+  sea:   new THREE.Vector3( -6, 0,-34),
+  dock:  null,                       // derived below — it must sit ON the shoreline
+};
+
+// The pond. Anchored on its OWN axis, deliberately not on the dock: if the
+// ellipse were defined from P.dock, moving the dock would drag the pond with it
+// and the dock could never straddle the edge.
+const POND_NEAR = new THREE.Vector3(-32, 0, -10);
+const WATER = (() => {
+  const d = P.sea.clone().sub(POND_NEAR);
+  const span = Math.hypot(d.x, d.z);
+  return {
+    mid:   POND_NEAR.clone().lerp(P.sea, 0.5),
+    theta: Math.atan2(-d.z, d.x),   // world-Y rotation aligning +x with the axis
+    A: span/2 + 9,                  // semi-major (along the leg)
+    B: 19,                          // semi-minor (channel width)
+  };
+})();
+
+// Dock sits exactly ON the pond's rim at its top-left (which is world -x in this
+// isometric), so the quay's depth straddles the waterline: half over, half on land.
+P.dock = (() => {
+  const c = Math.cos(WATER.theta), s = Math.sin(WATER.theta);
+  const k = 1 / Math.sqrt((c*c)/(WATER.A*WATER.A) + (s*s)/(WATER.B*WATER.B));
+  return new THREE.Vector3(WATER.mid.x - k, 0, WATER.mid.z);
+})();
+// <1 = on water, >1 = on land
+const waterNorm = (pt) => {
+  const dx = pt.x - WATER.mid.x, dz = pt.z - WATER.mid.z;
+  const lx =  dx*Math.cos(WATER.theta) - dz*Math.sin(WATER.theta);
+  const lz =  dx*Math.sin(WATER.theta) + dz*Math.cos(WATER.theta);
+  return (lx*lx)/(WATER.A*WATER.A) + (lz*lz)/(WATER.B*WATER.B);
+};
+
+// Landfall. Solved, not guessed: the point ON the pond's rim that lies furthest
+// screen-right (screen-x ranks by x−z in this isometric). The blue sea line ends
+// exactly here — on the coast — and the orange overland line takes over.
+const SHORE = (() => {
+  const { mid, theta:th, A, B } = WATER;
+  const p = Math.cos(th) + Math.sin(th);
+  const q = Math.sin(th) - Math.cos(th);
+  const amp = Math.hypot(A*p, B*q);
+  const lx = A * ((A*p)/amp);        // ellipse-local coords of the extremal point
+  const lz = B * ((B*q)/amp);
+  return new THREE.Vector3(
+    mid.x + lx*Math.cos(th) + lz*Math.sin(th),
+    0,
+    mid.z - lx*Math.sin(th) + lz*Math.cos(th)
+  );
+})();
+
+/* ---------- 01 store ---------- */
+{
+  const g = new THREE.Group();
+  g.add(put(rbox(5.2,3.4,4.4,M.shell,.22), 0,1.7,0));
+  g.add(put(rbox(5.4,.42,4.6,M.shell3,.14), 0,3.6,0));
+  const aw = rbox(4.6,.22,1.2,M.warm,.09); put(aw,0,2.5,2.3); aw.rotation.x=-.26; g.add(aw);
+  g.add(put(rbox(3.4,1.3,.14,M.glass,.06), 0,1.5,2.24));
+  g.add(put(rbox(.7,1.0,.7,M.shell2,.1), -1.7,4.25,-1.2));
+  // face the shopfront squarely at the viewer (camera sits out along +x/+z)
+  g.position.copy(P.store); g.rotation.y = Math.PI/4; scene.add(g);
+}
+
+/* ---------- 02 bkmgLab HQ ---------- */
+{
+  const g = new THREE.Group();
+  g.add(put(rbox(4.6,9.5,4.6,M.shell,.3), 0,4.75,0));
+  g.add(put(rbox(3.4,6.2,3.4,M.shell2,.26), -4.4,3.1,1.4));
+  g.add(put(rbox(3.0,4.6,3.6,M.shell2,.24), 4.2,2.3,-.8));
+  g.add(put(rbox(3.2,.9,3.2,M.shell3,.18), 0,9.9,0));
+  g.add(put(rbox(2.2,.3,2.2,M.glass,.1), 0,10.5,0));
+  for (let i=0;i<4;i++) g.add(put(rbox(4.66,.42,3.0,M.glass,.08), 0, 2.1+i*1.85, 0));
+  for (let i=0;i<3;i++) g.add(put(rbox(3.46,.34,2.2,M.glass,.07), -4.4, 1.6+i*1.55, 1.4));
+
+  // The real bkmgLab wordmark on the tower face (was canvas-drawn type).
+  // Source art is 1506x344 — the plane is sized to that aspect so the logo
+  // can't stretch, and kept under the 4.6-wide wall so it can't overhang.
+  {
+    // stroke-thickened wordmark — reads bolder at the sign's small on-screen size,
+    // where the thin original would blur toward grey under mipmapping.
+    const tex = new THREE.TextureLoader().load('assets/bkmglab-black-bold7.png');
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+
+    const SIGN_W = 3.9;
+    const SIGN_H = SIGN_W * (344 / 1506);            // preserve the art's aspect
+
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(SIGN_W, SIGN_H),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+    );
+    sign.position.set(0, 5.9, 2.33);   // sits just proud of the tower's front face
+    g.add(sign);
+  }
+
+  g.position.copy(P.hq); scene.add(g);
+}
+{
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(.5,1.7,30,24,1,true),
+    new THREE.MeshBasicMaterial({ color:C.accent, transparent:true, opacity:.055,
+      blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide })
+  );
+  beam.position.set(P.hq.x, 16, P.hq.z); scene.add(beam);
+}
+
+/* ---------- 03 warehouses ---------- */
+{
+  const g = new THREE.Group();
+  for (let i=0;i<2;i++){
+    g.add(put(rbox(10.5,3.2,5.0,M.shell,.2), 0,1.6,i*6.6));
+    for (let j=0;j<5;j++) g.add(put(rbox(1.5,.5,5.1,M.shell3,.1), -4.1+j*2.05, 3.4, i*6.6));
+    for (let j=0;j<3;j++) g.add(put(rbox(1.5,1.5,.15,M.shell3,.06), -3.2+j*3.2, .78, i*6.6+2.55));
+  }
+  for (let i=0;i<7;i++){
+    const s = .8+Math.random()*.5;
+    g.add(put(rbox(s,s,s, Math.random()>.78?M.accent:M.shell2, .08),
+      -5.5+Math.random()*11, s/2, -3.6+Math.random()*1.8));
+  }
+  g.position.copy(P.ware); g.rotation.y = .22; scene.add(g);
+}
+
+/* ---------- 04 water + port ---------- */
+{
+  const bay = new THREE.Group();
+  const water = new THREE.Mesh(new THREE.CircleGeometry(1, 80), clay(C.water,{rough:.22}));
+  water.rotation.x = -Math.PI/2;
+  water.scale.set(WATER.A, WATER.B, 1);         // long axis = the leg, short axis = channel width
+  water.receiveShadow = true;
+  bay.add(water);
+  bay.position.set(WATER.mid.x, 0.04, WATER.mid.z);
+  bay.rotation.y = WATER.theta;
+  scene.add(bay);
+
+  // Quay runs ALONG the shore (long axis on world z), so its depth straddles the
+  // waterline: the outer half sits over the pond, the inner half on land.
+  const quay = rbox(11,.8,5.5,M.shell3,.12);
+  put(quay, P.dock.x, .4, P.dock.z);
+  quay.rotation.y = Math.PI/2;
+  scene.add(quay);
+
+  // Cranes stand on the LAND half, reaching out over the water.
+  for (let i=0;i<2;i++){
+    const cr = new THREE.Group();
+    cr.add(put(rbox(.3,4.5,.3,M.shell2,.06), 0,2.25,-1.2));
+    cr.add(put(rbox(.3,4.5,.3,M.shell2,.06), 0,2.25, 1.2));
+    cr.add(put(rbox(6.5,.34,.34,M.accent,.08), 2.6,4.6,0));   // jib out over the pond
+    cr.add(put(rbox(.34,.34,3.0,M.shell2,.08), 0,4.6,0));
+    cr.position.set(P.dock.x - 2.6, .8, P.dock.z - 4 + i*8);
+    scene.add(cr);
+  }
+}
+
+/* ---------- trees + people ---------- */
+// A small spread of muted greens — sage through to a deeper eucalyptus. Kept
+// desaturated so the canopies read as part of the clay palette rather than
+// dropping cartoon-green blobs onto a pale blue-grey scene.
+const LEAF_GREENS = [
+  new THREE.Color().setHSL(0.30, 0.34, 0.46),   // sage
+  new THREE.Color().setHSL(0.28, 0.40, 0.38),   // moss
+  new THREE.Color().setHSL(0.33, 0.32, 0.42),   // grey-green
+  new THREE.Color().setHSL(0.26, 0.44, 0.33),   // olive
+  new THREE.Color().setHSL(0.36, 0.30, 0.50),   // the lightest of them
+  new THREE.Color().setHSL(0.31, 0.38, 0.28),   // deep eucalyptus, the darkest
+];
+// one material per shade, shared across all trees — 76 canopies, 6 materials
+const LEAF_MATS = LEAF_GREENS.map((col) =>
+  new THREE.MeshStandardMaterial({ color: col, roughness: 0.94, metalness: 0 })
+);
+
+const tree = (x,z,s=1) => {
+  const g = new THREE.Group();
+  g.add(put(rbox(.22,.7,.22,M.shell3,.06), 0,.35,0));
+  const mat = LEAF_MATS[(Math.random() * LEAF_MATS.length) | 0];
+  const c = new THREE.Mesh(new THREE.SphereGeometry(.75,18,14), mat);
+  c.scale.set(.82, 1.35 + Math.random()*0.35, .82);   // vary the height a touch too
+  c.position.y = 1.55; c.castShadow = true; c.receiveShadow = true;
+  g.add(c); g.position.set(x,0,z); g.scale.setScalar(s); scene.add(g);
+};
+// (trees are planted after the flow paths are defined — they need to avoid the roads)
+const person = (x,z,r=0) => {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.CapsuleGeometry(.17,.42,4,10), M.person);
+  b.position.y=.48; b.castShadow=true;
+  const h = new THREE.Mesh(new THREE.SphereGeometry(.17,14,12), M.person);
+  h.position.y=.94; h.castShadow=true;
+  g.add(b,h); g.position.set(x,0,z); g.rotation.y=r; scene.add(g);
+};
+[[29,23],[27,25],[5,7],[-2,7],[-20,18],[-29,17],[-31,-3]]
+  .forEach(([x,z]) => person(x,z,Math.random()*Math.PI*2));
+
+/* ============================================================
+   FLOW PATHS
+   ============================================================ */
+const arc = (a,b,h) => {
+  const m = a.clone().lerp(b,.5); m.y = h;
+  const q = a.clone().lerp(b,.22); q.y = h*.72;
+  const r = a.clone().lerp(b,.78); r.y = h*.72;
+  return new THREE.CatmullRomCurve3([a.clone(),q,m,r,b.clone()]);
+};
+// The HQ is a cluster of three. The RIGHT-hand building of that cluster sits at
+// (4.2, ·, -0.8) and spans x 2.7→5.7 — the orange line terminates against its side.
+const HQ_RIGHT = new THREE.Vector3( 6.0, 0.5, -0.4);   // orange line lands here
+const HQ_LEFT  = new THREE.Vector3(-1.2, 0.5,  2.6);   // blue line departs here
+
+const legs = [
+  // 01 order — runs FLAT along the ground from the store into the side of the
+  // cluster's right-hand building. No arc: it's a road, not a flight path.
+  { curve: new THREE.CatmullRomCurve3([
+      new THREE.Vector3(23.5, 0.5, 15.5),
+      new THREE.Vector3(18,   0.5, 10),
+      new THREE.Vector3(12,   0.5,  4),
+      new THREE.Vector3(8.5,  0.5,  0.6),
+      HQ_RIGHT.clone()]), color:C.warm, air:false },
+  // 02 sourcing — leaves the tower's LEFT base at ground level and runs OVER LAND,
+  // swinging around the front to enter the warehouse from its bottom-right.
+  { curve: new THREE.CatmullRomCurve3([
+      HQ_LEFT.clone(),
+      new THREE.Vector3(-2.5, 0.5, 8),
+      new THREE.Vector3(-6, 0.5, 16),
+      new THREE.Vector3(-14, 0.5, 21),
+      new THREE.Vector3(-19, 0.5, 19.5),
+      new THREE.Vector3(-20.5, 0.5, 15.5)]), color:C.accent, air:false },
+  // 03 warehouse → dock, over land. Stops against the quay's LANDWARD side rather
+  // than running across the slab.
+  { curve: new THREE.CatmullRomCurve3([
+      P.ware.clone().setY(.4), new THREE.Vector3(-40,.4,8),
+      new THREE.Vector3(-46,.4,-4), new THREE.Vector3(-45.5,.4,-14),
+      new THREE.Vector3(-44.4,.5,-20)]), color:C.accent, air:false },
+  // 04 the sea leg — the ship crosses the pond from the dock to the far RIGHT shore.
+  // Stays blue, stays on water the whole way.
+  { curve: new THREE.CatmullRomCurve3([
+      P.dock.clone().setY(.5), new THREE.Vector3(-34,.5,-27),
+      new THREE.Vector3(-18,.5,-36), SHORE.clone().setY(.5)]), color:C.accent, air:false },
+  // 05 delivery — the line turns ORANGE at the shore, runs overland around the right,
+  // and comes into the store from its right side. Trucks ride only the dry portion.
+  { curve: new THREE.CatmullRomCurve3([
+      SHORE.clone().setY(.4),
+      new THREE.Vector3(10,.4,-40),          // pulls inland immediately — never re-enters the water
+      new THREE.Vector3(28,.4,-34),
+      new THREE.Vector3(44,.4,-14), new THREE.Vector3(47,.4,6),
+      new THREE.Vector3(38,.4,17),
+      P.store.clone().add(new THREE.Vector3(4,.4,0))]), color:C.warm, air:false },
+];
+legs.forEach(l => {
+  scene.add(new THREE.Mesh(
+    new THREE.TubeGeometry(l.curve, 160, l.air?.055:.075, 8, false),
+    new THREE.MeshBasicMaterial({ color:l.color, transparent:true, opacity:l.air?.5:.32 })
+  ));
+  l.len = l.curve.getLength();
+});
+const TOTAL = legs.reduce((s,l)=>s+l.len,0);
+
+// The delivery line starts at the shore (on water) so it visually continues the
+// ship's run. The TRUCKS must not — find where that curve makes landfall and
+// start them there.
+const DRY = (() => {
+  for (let i=0; i<=200; i++){
+    const t = i/200;
+    if (waterNorm(legs[4].curve.getPointAt(t)) > 1) return t;
+  }
+  return 0;
+})();
+
+// Mirror image: the sea leg starts AT the dock, which straddles the waterline.
+// The line should start there, but the SHIP must float — launch it once afloat.
+// Launch only once the WHOLE hull is afloat — testing the centre alone leaves the
+// stern dragging across the shoreline for the first stretch.
+const WET = (() => {
+  const HULL_HALF = 3.2;
+  const afloat = (t) => {
+    const c = legs[3].curve.getPointAt(t);
+    const d = legs[3].curve.getTangentAt(t).normalize();
+    for (let k = -1; k <= 1; k += 0.25) {
+      const pt = c.clone().addScaledVector(d, HULL_HALF * k);
+      if (waterNorm(pt) >= 1) return false;      // some part of the hull is aground
+    }
+    return true;
+  };
+  for (let i=0; i<=200; i++){
+    const t = i/200;
+    if (afloat(t)) return t;
+  }
+  return 0;
+})();
+
+// The sea LINE runs all the way to the shore terminal, but the SHIP must not —
+// it would sail straight through the building. Berth it offshore instead:
+// stop where the hull still clears the terminal's landing pad.
+const BERTH = (() => {
+  const PAD_HALF  = 3.2;   // pad half-depth along the approach
+  const HULL_HALF = 3.2;   // ship is 6.4 long
+  const MARGIN    = 1.6;
+  const need = PAD_HALF + HULL_HALF + MARGIN;
+  for (let i = 200; i >= 0; i--) {
+    const t = i/200;
+    if (legs[3].curve.getPointAt(t).distanceTo(SHORE) >= need) return t;
+  }
+  return 0.8;
+})();
+
+const pulses = [];
+{
+  const geo = new THREE.SphereGeometry(.3,14,12);
+  for (let i=0;i<9;i++){
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color:C.accent }));
+    scene.add(m); pulses.push({ mesh:m, off:i/9 });
+  }
+}
+const along = (t) => {
+  let d = (t%1)*TOTAL;
+  for (let i=0;i<legs.length;i++){
+    if (d <= legs[i].len) return { p: legs[i].curve.getPointAt(Math.min(d/legs[i].len,1)), leg:i };
+    d -= legs[i].len;
+  }
+  return { p: legs[0].curve.getPointAt(0), leg:0 };
+};
+
+/* ---------- trees ----------
+   Planted here, AFTER the paths exist, so they can avoid the roads.
+   Rejection-sampled until TARGET is actually reached — the old loop merely
+   skipped bad picks, so it quietly produced fewer trees than it asked for.  */
+{
+  const TARGET = 76;                       // doubled from the ~38 actually placed
+  const KEEP_CLEAR = [                     // [x, z, radius] — nothing grows inside these
+    [P.store.x, P.store.z,  9],
+    [P.hq.x,    P.hq.z,    11],
+    [P.ware.x,  P.ware.z,  17],            // the sheds are long
+    [P.dock.x,  P.dock.z,  11],
+    [SHORE.x,   SHORE.z,    9],            // shore terminal
+  ];
+  const onWater     = (x,z) => waterNorm(new THREE.Vector3(x,0,z)) < 1;
+  const nearBuilding = (x,z) => KEEP_CLEAR.some(([cx,cz,r]) => Math.hypot(x-cx, z-cz) < r);
+  const onARoad = (x,z) => legs.some(l => {
+    for (let i=0;i<=40;i++){
+      const q = l.curve.getPointAt(i/40);
+      if (Math.hypot(x-q.x, z-q.z) < 3.4) return true;
+    }
+    return false;
+  });
+
+  let planted = 0, attempts = 0;
+  while (planted < TARGET && attempts < 6000) {
+    attempts++;
+    const a = Math.random()*Math.PI*2, r = 26 + Math.random()*72;
+    const x = Math.cos(a)*r, z = Math.sin(a)*r;
+    if (onWater(x,z) || nearBuilding(x,z) || onARoad(x,z)) continue;
+    tree(x, z, .75 + Math.random()*.75);
+    planted++;
+  }
+  window.__treeCount = planted;
+}
+
+/* ---------- landing terminal at the shore ----------
+   Sits exactly on SHORE, where the blue sea line hands off to the orange road
+   line. Straddles the waterline and covers the colour-change seam.            */
+{
+  const t = legs[3].curve.getTangentAt(1);          // heading of the ship as it lands
+  const yaw = Math.atan2(t.x, t.z);
+
+  const term = new THREE.Group();
+
+  // landing pad — wide enough to sit over the seam itself
+  term.add(put(rbox(9, .7, 6.4, M.shell3, .16), 0, .35, 0));
+
+  // terminal shed
+  term.add(put(rbox(3.6, 2.8, 3.0, M.shell, .24), -1.2, 2.1, 0));
+  term.add(put(rbox(3.9, .42, 3.3, M.shell3, .14), -1.2, 3.7, 0));
+  term.add(put(rbox(2.2, .9, .16, M.glass, .06), -1.2, 1.9, 1.53));
+
+  // gantry over the waterside edge
+  const g = new THREE.Group();
+  g.add(put(rbox(.26, 3.2, .26, M.shell2, .06), 0, 1.6, -1.6));
+  g.add(put(rbox(.26, 3.2, .26, M.shell2, .06), 0, 1.6,  1.6));
+  g.add(put(rbox(.3, .3, 4.0, M.accent, .08), 0, 3.3, 0));
+  g.position.set(2.4, .7, 0);
+  term.add(g);
+
+  // a few containers waiting to move
+  [[-3.4,-1.9],[-3.4,-1.0],[1.0,-2.0]].forEach(([x,z], i) => {
+    term.add(put(rbox(.8,.7,.8, i === 1 ? M.warm : M.accent, .07), x, 1.05, z));
+  });
+
+  term.position.set(SHORE.x, 0, SHORE.z);
+  term.rotation.y = yaw;
+  scene.add(term);
+}
+
+/* ---------- vehicles ---------- */
+const ship = new THREE.Group();
+{
+  ship.add(put(rbox(6.4,1.1,2.2,M.shell3,.28), 0,.55,0));
+  ship.add(put(rbox(1.6,1.2,1.7,M.shell,.16), -2.1,1.6,0));
+  for (let i=0;i<7;i++){
+    ship.add(put(rbox(.62,.5,.62, i%2===0?M.accent:M.warm, .06),
+      -.6+(i%4)*.75, 1.35+Math.floor(i/4)*.55, -.4+(i%2)*.8));
+  }
+  scene.add(ship);
+}
+// cab colour matches the line the truck runs on: orange for the delivery road,
+// blue for the inland haul from the warehouses up to the dock.
+const mkTruck = (cab = M.warm) => {
+  const g = new THREE.Group();
+  g.add(put(rbox(2.1,1.0,1.0,M.shell,.12), -.5,.72,0));
+  g.add(put(rbox(.85,.8,1.0,cab,.12), 1.05,.6,0));
+  scene.add(g); return g;
+};
+const trucks     = [mkTruck(), mkTruck()];                       // orange — delivery leg
+const haulTrucks = [mkTruck(M.accent), mkTruck(M.accent)];       // blue — warehouse → dock
+
+/* ---------- motes ---------- */
+let motes;
+{
+  const n = 240, pos = new Float32Array(n*3);
+  for (let i=0;i<n;i++){
+    const a = Math.random()*Math.PI*2, r = Math.random()*90;
+    pos[i*3] = Math.cos(a)*r; pos[i*3+1] = 1+Math.random()*26; pos[i*3+2] = Math.sin(a)*r;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  motes = new THREE.Points(g, new THREE.PointsMaterial({
+    color:0xffffff, size:.3, transparent:true, opacity:.55, depthWrite:false }));
+  scene.add(motes);
+}
+
+/* ============================================================
+   SCROLL-DRIVEN CAMERA
+   Each keyframe = where the camera sits, what it looks at, how tight it zooms.
+   Scroll position through #flow lerps between them.
+   ============================================================ */
+const V = (x,y,z) => new THREE.Vector3(x,y,z);
+
+// wide establishing shot — held through the hero
+const HERO = { pos: V(60,46,60), tgt: V(-4,2,-6), zoom: 0.74 };
+
+// one keyframe per stage section, in order. Section i sits at flow progress i/(n-1).
+// Camera keeps the same isometric offset; only the target and zoom change.
+const KF = [
+  { pos: V(50,24,44),  tgt: V(26,2,17),   zoom: 1.55 },  // 01 store
+  { pos: V(24,24,26),  tgt: V(0,5,0),     zoom: 1.45 },  // 02 HQ
+  { pos: V(-2,22,36),  tgt: V(-26,2,12),  zoom: 1.40 },  // 03 warehouse
+  { pos: V(-2,26,14),  tgt: V(-16,1,-24), zoom: 1.00 },  // 04 port + ship crossing
+  { pos: V(64,48,64),  tgt: V(0,2,4),     zoom: 0.70 },  // 05 delivery — pull back, loop closes
+];
+
+const flowEl  = document.getElementById('flow');
+const stepEls = [...document.querySelectorAll('.step')];
+const heroInner = document.getElementById('heroInner');
+let activeStage = -1;
+
+const easeInOut = (t) => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+// smoothed scroll progress through the flow region
+let camPos = HERO.pos.clone();
+let camTgt = HERO.tgt.clone();
+let camZoom = HERO.zoom;
+
+function flowProgress(){
+  const r = flowEl.getBoundingClientRect();
+  const total = r.height - innerHeight;
+  if (total <= 0) return 0;
+  return clamp01(-r.top / total);
+}
+
+const blend = (a, b, f) => ({
+  pos:  a.pos.clone().lerp(b.pos, f),
+  tgt:  a.tgt.clone().lerp(b.tgt, f),
+  zoom: a.zoom + (b.zoom - a.zoom) * f,
+});
+
+function desiredCamera(){
+  const r = flowEl.getBoundingClientRect();
+
+  // Before the flow starts: hold the hero shot, easing into stage 01
+  // as the first stage section rises into view.
+  if (r.top > 0) {
+    const f = easeInOut(clamp01(1 - r.top / innerHeight));
+    return { ...blend(HERO, KF[0], f), stage: 0, sub: 0 };
+  }
+
+  // Inside the flow: each section i lands exactly on keyframe i.
+  const p = flowProgress();
+  const t = p * (KF.length - 1);
+  const i = Math.min(KF.length - 2, Math.floor(t));
+  const f = easeInOut(clamp01(t - i));
+  const stage = Math.round(t);
+  // How far through THIS step we are — drives the filling rule. Interior stages
+  // own a full-width window [s-0.5, s+0.5]; the first and last stages are clipped
+  // by the ends of the scroll, so give them their half-window (mapped to 0→1) —
+  // otherwise the first line starts half-full and the last never fills past 0.5.
+  const last = KF.length - 1;
+  let sub;
+  if (stage <= 0)         sub = clamp01(t / 0.5);
+  else if (stage >= last) sub = clamp01((t - (last - 0.5)) / 0.5);
+  else                    sub = clamp01(t - (stage - 0.5));
+  return { ...blend(KF[i], KF[i+1], f), stage, sub };
+}
+
+/* ---------- pointer parallax (subtle) ---------- */
+const mouse = { x:0, y:0, tx:0, ty:0 };
+addEventListener('pointermove', (e) => {
+  mouse.tx = (e.clientX / innerWidth  - .5) * 2;
+  mouse.ty = (e.clientY / innerHeight - .5) * 2;
+});
+
+/* ============================================================
+   RENDER LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+const _v = new THREE.Vector3();   // scratch vector, reused for projection
+const ride = (obj, curve, t, yaw=0) => {
+  const p = curve.getPointAt(t), tan = curve.getTangentAt(t);
+  obj.position.copy(p);
+  obj.rotation.y = Math.atan2(tan.x, tan.z) + yaw;
+};
+
+function tick(){
+  const t = clock.getElapsedTime();
+
+  // --- camera follows scroll, smoothed ---
+  const d = desiredCamera();
+  camPos.lerp(d.pos, 0.075);
+  camTgt.lerp(d.tgt, 0.075);
+  camZoom += (d.zoom - camZoom) * 0.075;
+
+  // hero fades out as it rises off the top of the screen
+  {
+    const k = clamp01(scrollY / (innerHeight * 0.62));
+    const f = easeInOut(k);
+    heroInner.style.opacity = String(1 - f);
+    heroInner.style.transform = `translateY(${(-f * 34).toFixed(1)}px)`;
+    heroInner.style.pointerEvents = f > 0.9 ? 'none' : '';
+  }
+
+  // stepper follows the scroll, not the pulses
+  if (d.stage !== activeStage) {
+    activeStage = d.stage;
+    stepEls.forEach((el, i) => el.classList.toggle('on', i === activeStage));
+  }
+  const act = stepEls[activeStage];
+  if (act) act.style.setProperty('--p', d.sub.toFixed(3));
+
+  mouse.x += (mouse.tx - mouse.x) * 0.05;
+  mouse.y += (mouse.ty - mouse.y) * 0.05;
+
+  camera.position.set(camPos.x + mouse.x*1.6, camPos.y - mouse.y*1.0, camPos.z);
+  camera.lookAt(camTgt);
+  camera.zoom = camZoom;
+  camera.updateProjectionMatrix();
+
+  // --- pulses ---
+  const head = (t*0.00864) % 1;         // 0.0072 × 1.2 — 20% faster
+  pulses.forEach((pu,i) => {
+    pu.mesh.position.copy(along(head + pu.off).p);
+    pu.mesh.scale.setScalar(.85 + Math.sin(t*4+i)*.15);
+  });
+
+  // --- vehicles ---
+  ride(ship, legs[3].curve, WET + (BERTH-WET)*((t*0.045)%1), -Math.PI/2);   // afloat → berth offshore
+  ship.position.y = .42 + Math.sin(t*1.4)*.05;
+  ship.rotation.z = Math.sin(t*1.1)*.015;
+  trucks.forEach((tr,i) => {
+    const u = (t*0.05 + i*0.5) % 1;
+    ride(tr, legs[4].curve, DRY + (1 - DRY) * u, -Math.PI/2);   // start at landfall
+  });
+  // blue haul trucks: warehouses → dock, along the inland road
+  haulTrucks.forEach((tr,i) => {
+    ride(tr, legs[2].curve, (t*0.06 + i*0.5) % 1, -Math.PI/2);
+  });
+
+  motes.rotation.y = t*0.012;
+  motes.position.y = Math.sin(t*0.3)*0.5;
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+
+// Size off the CONTAINER's real box, not window.innerWidth, and re-run it whenever
+// that box changes. A plain 'resize' listener misses DPR changes (dragging the window
+// to a different display), which is what leaves the canvas stranded at a stale size.
+function resize(){
+  const w = app.clientWidth  || innerWidth;
+  const h = app.clientHeight || innerHeight;
+  if (!w || !h) return;
+
+  aspect = w / h;
+  camera.left = -FRUSTUM*aspect/2; camera.right = FRUSTUM*aspect/2;
+  camera.top  =  FRUSTUM/2;        camera.bottom = -FRUSTUM/2;
+  camera.updateProjectionMatrix();
+
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(w, h, false);   // false → don't write inline CSS; the stylesheet owns layout
+}
+resize();
+new ResizeObserver(resize).observe(app);
+addEventListener('resize', resize);
+// dragging between a retina and non-retina display changes DPR without resizing the window
+matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener('change', resize, { once:false });
+
+/* ============================================================
+   PAGE BEHAVIOUR — reveals, FAQ, counters, nav theme
+   ============================================================ */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
+}, { threshold: 0.2 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+// FAQ accordion
+document.querySelectorAll('#faqlist .q').forEach(q => {
+  q.addEventListener('click', () => {
+    const open = q.classList.contains('open');
+    document.querySelectorAll('#faqlist .q').forEach(o => o.classList.remove('open'));
+    if (!open) q.classList.add('open');
+  });
+});
+
+// count-up stats
+const counters = document.querySelectorAll('[data-count]');
+const cio = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting || e.target.dataset.done) return;
+    e.target.dataset.done = '1';
+    const end = +e.target.dataset.count;
+    const t0 = performance.now(), dur = 1400;
+    const step = (now) => {
+      const k = clamp01((now - t0)/dur);
+      const eased = 1 - Math.pow(1-k, 3);
+      e.target.textContent = Math.round(end*eased).toLocaleString();
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}, { threshold: 0.6 });
+counters.forEach(c => cio.observe(c));
+
+// nav flips to light type over the dark sections
+const nav = document.getElementById('nav');
+const navLogo = nav.querySelector('.logo');
+const navRight = nav.querySelector('.right');
+const darkSecs = [...document.querySelectorAll('.dark-sec, footer')];
+const tickerSec = document.getElementById('ticker');
+
+// Distance to slide the centred logo so its right edge sits just left of the
+// language toggle + CTA. Measured from geometry (the logo is page-centred, so
+// its width alone gives the untransformed right edge) — stays correct on resize.
+function applyLogoShift(){
+  const w = navLogo.getBoundingClientRect().width;
+  const untransformedRight = innerWidth / 2 + w / 2;
+  const targetRight = navRight.getBoundingClientRect().left - 28;
+  navLogo.style.transform = 'translateX(' + (targetRight - untransformedRight) + 'px)';
+}
+
+// Park the logo on the right once the ticker section reaches the top; restore it
+// to centre when scrolled well back up. Two thresholds (hysteresis) so the state
+// doesn't flip-flop while smooth-scroll is still settling near the boundary. The
+// transform is set once per state change so its transition can run to completion.
+let logoRight = false;
+function onNavScroll(){
+  const y = 40;
+  const onDark = darkSecs.some(s => {
+    const r = s.getBoundingClientRect();
+    return r.top <= y && r.bottom >= y;
+  });
+  nav.classList.toggle('on-dark', onDark);
+
+  const top = tickerSec.getBoundingClientRect().top;
+  if (!logoRight && top <= 60){
+    logoRight = true;
+    nav.classList.add('logo-right');
+    applyLogoShift();
+  } else if (logoRight && top >= 160){
+    logoRight = false;
+    nav.classList.remove('logo-right');
+    navLogo.style.transform = '';
+  }
+}
+addEventListener('scroll', onNavScroll, { passive:true });
+addEventListener('resize', () => { if (logoRight) applyLogoShift(); });
+onNavScroll();
+
+/* ---------- round carousel: 3D brand ring ----------
+   Vanilla port of the RoundCarousel component (this page has no React).
+   Same geometry and behaviour: auto-spin, pointer drag, momentum decay. */
+{
+  const BRANDS = [
+    { name: 'TurboChef',     src: 'assets/brands/turbochef.png', scale: 1.3 },
+    { name: 'BUNN',          src: 'assets/brands/bunn.png' },
+    { name: 'Middleby',      src: 'assets/brands/middleby.png' },
+    { name: 'Antunes',       src: 'assets/brands/antunes.png', scale: 1.25 },
+    { name: 'HOUNÖ',         src: 'assets/brands/houno.png' },
+    // Drop a transparent PNG at the path below and it renders automatically;
+    // a missing file shows a marked placeholder instead.
+    { name: 'FBD',           src: 'assets/brands/fbd.png' },
+    { name: "Baker's Pride", src: 'assets/brands/bakerspride.png' },
+    { name: 'STAR',          src: 'assets/brands/star.png' },
+  ];
+
+  /* ============ TUNE THE RING HERE ============
+     tileW/tileH  size of each logo's slot, px. Bigger = bigger logos AND a wider
+                  ring (radius is derived from tileW).
+     spacing      gap between slots. Higher = wider ring, logos further apart. 0–8.
+     speed        idle spin rate. 7 ≈ 42°/sec. 0 = no auto-spin.
+     direction    'right' | 'left'
+     tilt         camera pitch in degrees. Negative looks down on the ring.
+     perspective  px. LOWER = stronger 3D distortion. Higher = flatter, calmer.
+     backOpacity  the far side of the ring, seen through the gaps. 0 = hide it.
+     sensitivity  drag responsiveness.
+     drag         allow grabbing to spin.
+  ============================================== */
+  const CFG = {
+    tileW: 300, tileH: 200,
+    logoScale: 0.48,       // size of the mark WITHIN its slot. Shrinking tileW instead
+                           // would also shrink the ring, since radius derives from it.
+    spacing: 5,
+    speed: 1.5,            // 4 → 3 → 1.5 (halved again)
+    direction: 'right',
+    tilt: -18,             // starting pitch (looking down on the ring); drag up/down to change it live
+    tiltDrag: true,        // vertical drag adjusts the tilt
+    tiltMin: -28,          // clamp — past this the ring folds in on itself
+    tiltMax: 28,
+    tiltSensitivity: 0.25, // degrees of tilt per px of vertical drag
+    perspective: 3000,
+    backOpacity: 0.14,
+    sensitivity: 5,
+    drag: true,
+  };
+
+  const TILE_W = CFG.tileW, TILE_H = CFG.tileH, SENSITIVITY = CFG.sensitivity;
+  const count = BRANDS.length;
+  const angle = 360 / count;
+  const factor = 1 + CFG.spacing * 0.15;
+  const radius = (TILE_W * factor) / (2 * Math.tan(Math.PI / count));
+  const degPerSec = CFG.speed * 6 * (CFG.direction === 'left' ? -1 : 1);
+
+  // push the config through to the CSS/DOM
+  stageSetup: {
+    const st = document.getElementById('ringStage');
+    st.style.perspective = CFG.perspective + 'px';
+    st.style.cursor = CFG.drag ? 'grab' : 'default';
+    document.querySelector('.ring-tilt').style.transform = `rotateX(${CFG.tilt}deg)`;
+    document.documentElement.style.setProperty('--ring-back-opacity', CFG.backOpacity);
+    document.documentElement.style.setProperty('--logo-scale', CFG.logoScale);
+
+    // park the copy on the cylinder's central axis (z = -radius), then scale up
+    // to cancel the perspective foreshortening at that depth so it reads full-size.
+    const centerEl = document.getElementById('ringCenter');
+    if (centerEl){
+      const zScale = (CFG.perspective + radius) / CFG.perspective;
+      centerEl.style.transform =
+        `translate(-50%,-50%) translateZ(${-radius}px) scale(${zScale})`;
+    }
+  }
+
+  const ring = document.getElementById('ring');
+  const stage = document.getElementById('ringStage');
+  ring.style.width = TILE_W + 'px';
+  ring.style.height = TILE_H + 'px';
+
+  const face = (brand, back) => {
+    const d = document.createElement('div');
+    d.className = 'ring-face' + (back ? ' back' : '');
+    const img = new Image();
+    img.src = brand.src;
+    img.alt = brand.name;
+    // optional per-brand size tweak, multiplied onto the shared logoScale
+    if (brand.scale) img.style.setProperty('--logo-scale', CFG.logoScale * brand.scale);
+    // if the file isn't there, fall back to a clearly-marked placeholder tile
+    img.onerror = () => {
+      d.classList.add('pending');
+      d.innerHTML = `<span>${brand.name}<small>logo pending</small></span>`;
+    };
+    d.appendChild(img);
+    return d;
+  };
+
+  BRANDS.forEach((brand, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'ring-cell';
+    cell.style.transform = `rotateY(${i * angle}deg) translateZ(${radius}px)`;
+    cell.appendChild(face(brand, false));
+    cell.appendChild(face(brand, true));
+    ring.appendChild(cell);
+  });
+
+  const tiltEl = document.querySelector('.ring-tilt');
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  let rotY = 0, vel = 0, last = 0;
+  let tilt = CFG.tilt;        // target, set by vertical drag
+  let tiltShown = CFG.tilt;   // smoothed value actually rendered
+  const drag = { active: false, x: 0, y: 0 };
+
+  const apply = () => {
+    ring.style.transform = `translateZ(${-radius}px) rotateY(${rotY}deg)`;
+    tiltEl.style.transform = `rotateX(${tiltShown}deg)`;
+  };
+  apply();
+
+  const draw = (now) => {
+    const dt = last ? (now - last) / 1000 : 0;
+    last = now;
+    const f = Math.min(dt, 0.1);
+    if (!drag.active) {
+      rotY += degPerSec * f;                                         // steady auto-spin, always on
+      if (Math.abs(vel) > 0.01) { vel *= 0.94; rotY += vel * f; }   // + flick momentum easing back in
+    }
+    tiltShown += (tilt - tiltShown) * 0.12;                          // ease toward the target
+    apply();
+    requestAnimationFrame(draw);
+  };
+  requestAnimationFrame(draw);
+
+  // the browser's own image-drag would otherwise fire and paint a selection
+  stage.addEventListener('dragstart', (e) => e.preventDefault());
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (!CFG.drag) return;
+    e.preventDefault();
+    stage.setPointerCapture?.(e.pointerId);
+    drag.active = true; drag.x = e.clientX; drag.y = e.clientY; vel = 0;
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (!drag.active) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+
+    // horizontal → spin
+    const k = 0.3 * SENSITIVITY / 5;      // scaled: raw sensitivity 5 was far too twitchy here
+    rotY += dx * k;
+    vel = dx * k * 60;
+
+    // vertical → tilt. Drag DOWN to look down on the ring (dy positive → tilt more
+    // negative), which is the direction that feels natural: you're pulling the far
+    // side of the ring up toward you.
+    if (CFG.tiltDrag) {
+      tilt = clamp(tilt - dy * CFG.tiltSensitivity, CFG.tiltMin, CFG.tiltMax);
+    }
+  });
+  const release = (e) => { stage.releasePointerCapture?.(e.pointerId); drag.active = false; };
+  stage.addEventListener('pointerup', release);
+  stage.addEventListener('pointercancel', release);
+}
+
+/* ---------- partner ticker ----------
+   The CSS scrolls the track to -50%, so the marks must appear exactly twice
+   for the loop to be seamless. Duplicate once, and only once. */
+{
+  const track = document.getElementById('tickerTrack');
+  if (track && !track.dataset.doubled) {
+    track.innerHTML += track.innerHTML;
+    track.dataset.doubled = '1';
+  }
+}
+
+/* ---------- language ---------- */
+const LANG_KEY = 'bkmg-lang';
+const langEl = document.getElementById('lang');
+
+function applyLang(l){
+  document.documentElement.lang = l;
+  // every translatable node carries both strings; innerHTML so <br> survives
+  document.querySelectorAll('[data-ko]').forEach(el => {
+    const v = el.dataset[l];
+    if (v != null) el.innerHTML = v;
+  });
+  langEl.querySelectorAll('.opt').forEach(o => o.classList.toggle('on', o.dataset.l === l));
+  try { localStorage.setItem(LANG_KEY, l); } catch {}
+  window.__lang = l;
+}
+
+// Korean is the default — this is a Korean site for Korean customers, and the
+// browser's locale is a poor proxy for that. English is a deliberate opt-in.
+// A previously chosen language always wins.
+const saved = (() => { try { return localStorage.getItem(LANG_KEY); } catch { return null; } })();
+applyLang(saved === 'en' ? 'en' : 'ko');
+
+langEl.addEventListener('click', () => applyLang(window.__lang === 'ko' ? 'en' : 'ko'));
+
+// dev hook
+window.__S = { scene, camera, ship, trucks, haulTrucks, legs, P, KF, flowProgress, waterNorm, WATER, SHORE, DRY, WET, BERTH, applyLang, THREE };
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/RoundedBoxGeometry.js';
+
+/* ============================================================
+   bkmgLab — Nationwide service network
+   South Korea as a solid clay floor (no borders/markings); a small
+   building on each regional service company, the HQ in Seoul, blue
+   routes and trucks running out to each territory and back.
+   ============================================================ */
+// South Korea outline (geoBoundaries KOR ADM0, RDP-simplified) + service-company cities
+  const KR_MAINLAND=[[128.4745, 38.4261], [128.3649, 38.6243], [128.2811, 38.5844], [128.2811, 38.4844], [128.2256, 38.3998], [128.0399, 38.3043], [127.8008, 38.2939], [127.7537, 38.3254], [127.4719, 38.2959], [127.3771, 38.3185], [127.0905, 38.2859], [126.9719, 38.2189], [126.7619, 37.979], [126.6658, 37.9376], [126.6675, 37.8278], [126.7, 37.8297], [126.6788, 37.6863], [126.7552, 37.6379], [126.6615, 37.6724], [126.6619, 37.758], [126.5349, 37.7682], [126.6011, 37.5068], [126.6442, 37.5044], [126.595, 37.4723], [126.596, 37.4397], [126.6386, 37.4138], [126.6151, 37.3797], [126.7172, 37.3838], [126.6898, 37.3325], [126.8707, 37.2679], [126.8192, 37.2744], [126.782, 37.2202], [126.7676, 37.2543], [126.6585, 37.2543], [126.6802, 37.2177], [126.719, 37.2129], [126.6653, 37.1755], [126.7069, 37.1649], [126.6856, 37.1301], [126.8023, 37.1854], [126.8298, 37.1587], [126.8645, 37.1791], [126.8635, 37.1503], [126.7645, 37.1177], [126.7552, 37.0488], [126.8491, 37.0373], [126.8905, 37.0959], [126.911, 37.0141], [126.8244, 37.0026], [126.9127, 36.9296], [126.9691, 36.932], [126.9822, 36.9802], [127.042, 36.9936], [126.9942, 36.9669], [126.9895, 36.9186], [126.8602, 36.8696], [126.9048, 36.8223], [126.8633, 36.8291], [126.8508, 36.754], [126.8298, 36.7751], [126.8491, 36.788], [126.8302, 36.9102], [126.782, 36.8912], [126.7962, 36.9558], [126.6815, 36.9947], [126.6311, 36.9116], [126.6261, 36.9961], [126.5007, 37.055], [126.5123, 37.0164], [126.573, 36.9844], [126.4934, 36.997], [126.5826, 36.898], [126.5191, 36.9479], [126.4839, 36.8415], [126.4785, 36.9359], [126.4324, 36.962], [126.4454, 37.0034], [126.353, 37.0], [126.3357, 36.9868], [126.3765, 36.9749], [126.3539, 36.9552], [126.4192, 36.9223], [126.3773, 36.8769], [126.4046, 36.857], [126.3287, 36.847], [126.3567, 36.7888], [126.2827, 36.8037], [126.3235, 36.8832], [126.3089, 36.9669], [126.2857, 36.9611], [126.2752, 36.8747], [126.23, 36.873], [126.2339, 36.9042], [126.1922, 36.8859], [126.2134, 36.857], [126.1987, 36.8232], [126.24, 36.8161], [126.1922, 36.8086], [126.2134, 36.7813], [126.1656, 36.8161], [126.1282, 36.7613], [126.1328, 36.7038], [126.1582, 36.7608], [126.2134, 36.7267], [126.157, 36.7021], [126.1777, 36.6732], [126.2742, 36.7199], [126.2953, 36.5827], [126.343, 36.61], [126.3015, 36.6994], [126.343, 36.7404], [126.3779, 36.7026], [126.3671, 36.6291], [126.4242, 36.6066], [126.438, 36.7165], [126.4796, 36.7471], [126.5007, 36.7199], [126.4745, 36.6879], [126.508, 36.6704], [126.4838, 36.6496], [126.5199, 36.6262], [126.5123, 36.6032], [126.4577, 36.5956], [126.4703, 36.5402], [126.5139, 36.5288], [126.4834, 36.497], [126.4977, 36.4484], [126.6174, 36.4735], [126.4988, 36.4201], [126.5206, 36.3736], [126.5826, 36.353], [126.5138, 36.3227], [126.5826, 36.2947], [126.5349, 36.2196], [126.6033, 36.1718], [126.5314, 36.1739], [126.4934, 36.1308], [126.5292, 36.1535], [126.5894, 36.1308], [126.6925, 35.9999], [126.8707, 36.062], [126.7445, 35.9896], [126.5214, 35.9705], [126.5257, 35.9404], [126.6088, 35.9311], [126.6123, 35.8902], [126.7332, 35.8856], [126.8098, 35.9117], [126.8375, 35.8933], [126.7034, 35.8485], [126.791, 35.7914], [126.782, 35.7602], [126.7331, 35.7924], [126.6622, 35.793], [126.5972, 35.7139], [126.4676, 35.6396], [126.4637, 35.602], [126.5132, 35.5769], [126.6702, 35.5887], [126.6925, 35.5344], [126.6429, 35.5728], [126.4927, 35.5253], [126.4182, 35.394], [126.4585, 35.3454], [126.4114, 35.3699], [126.3567, 35.26], [126.3773, 35.2526], [126.3089, 35.2333], [126.3635, 35.2395], [126.3711, 35.1735], [126.4524, 35.1003], [126.4251, 35.0198], [126.4114, 35.0613], [126.345, 35.0964], [126.343, 35.157], [126.3152, 35.116], [126.2891, 35.1394], [126.2542, 35.1234], [126.2883, 35.053], [126.3015, 35.0887], [126.3206, 35.0833], [126.3741, 35.0168], [126.3492, 34.9726], [126.3015, 34.9726], [126.3152, 34.9379], [126.3633, 34.9274], [126.3706, 34.9685], [126.4364, 34.9814], [126.3977, 34.9515], [126.4251, 34.8907], [126.3735, 34.7907], [126.4872, 34.8138], [126.4872, 34.7871], [126.5133, 34.7823], [126.5676, 34.9014], [126.5894, 34.8832], [126.5758, 34.8218], [126.6653, 34.8081], [126.6382, 34.788], [126.5444, 34.7957], [126.5349, 34.746], [126.4601, 34.7788], [126.364, 34.7492], [126.5084, 34.7185], [126.6236, 34.63], [126.5316, 34.6526], [126.5357, 34.6232], [126.4529, 34.671], [126.4479, 34.7059], [126.3786, 34.7112], [126.3861, 34.6358], [126.4161, 34.6527], [126.4646, 34.5847], [126.3699, 34.6089], [126.3567, 34.6982], [126.2903, 34.7502], [126.2711, 34.6425], [126.3228, 34.6089], [126.2953, 34.5891], [126.346, 34.5846], [126.3909, 34.5338], [126.5396, 34.563], [126.5138, 34.5338], [126.5418, 34.5133], [126.4902, 34.5086], [126.4659, 34.4724], [126.4758, 34.4333], [126.5176, 34.4138], [126.4796, 34.3488], [126.5274, 34.3414], [126.5213, 34.2942], [126.6033, 34.3004], [126.6336, 34.3957], [126.7269, 34.433], [126.7088, 34.4499], [126.7615, 34.4792], [126.7351, 34.5149], [126.766, 34.5234], [126.7778, 34.5865], [126.8067, 34.5685], [126.8098, 34.4512], [126.898, 34.4177], [126.896, 34.4499], [126.9408, 34.4546], [126.939, 34.4959], [126.9942, 34.5407], [127.0103, 34.6125], [127.1362, 34.6881], [127.1997, 34.6915], [127.2481, 34.7665], [127.2908, 34.7214], [127.3316, 34.7412], [127.3579, 34.6982], [127.3145, 34.6519], [127.2748, 34.7051], [127.2406, 34.671], [127.261, 34.63], [127.2467, 34.5837], [127.1929, 34.5748], [127.2134, 34.6369], [127.1245, 34.5407], [127.1792, 34.5133], [127.2235, 34.5468], [127.3159, 34.4449], [127.3436, 34.445], [127.3278, 34.4739], [127.4392, 34.5407], [127.3579, 34.5543], [127.3494, 34.5858], [127.5036, 34.5913], [127.4952, 34.6232], [127.4522, 34.6369], [127.4876, 34.6369], [127.4662, 34.6622], [127.406, 34.7], [127.3953, 34.7567], [127.3579, 34.7597], [127.4255, 34.8007], [127.3653, 34.824], [127.4839, 34.8395], [127.5213, 34.8898], [127.5354, 34.8081], [127.5845, 34.7462], [127.5608, 34.6622], [127.6407, 34.618], [127.6243, 34.6982], [127.6563, 34.7313], [127.7415, 34.7256], [127.7756, 34.8491], [127.6565, 34.8119], [127.5753, 34.9136], [127.5916, 34.9464], [127.6621, 34.9068], [127.7092, 34.9404], [127.7192, 34.9901], [127.7444, 34.9602], [127.8912, 34.9467], [127.9258, 35.0198], [127.9539, 34.9788], [128.0068, 34.9918], [128.001, 35.0341], [128.0693, 35.0825], [128.0557, 34.9316], [128.207, 34.8907], [128.2241, 34.9379], [128.3023, 34.908], [128.3351, 34.9473], [128.3578, 34.9099], [128.3245, 34.8973], [128.3408, 34.8727], [128.4159, 34.8627], [128.3829, 34.8393], [128.4353, 34.8432], [128.4745, 34.8907], [128.433, 34.8907], [128.4414, 34.9599], [128.42, 34.9827], [128.4915, 34.9959], [128.4881, 35.0512], [128.3714, 35.0136], [128.3892, 35.049], [128.4813, 35.075], [128.4781, 35.0991], [128.6521, 35.0613], [128.6248, 35.0682], [128.5779, 35.1787], [128.6021, 35.2139], [128.6179, 35.1433], [128.6799, 35.116], [128.6963, 35.1435], [128.7005, 35.0961], [128.762, 35.0794], [128.7811, 35.1111], [128.7916, 35.083], [128.8822, 35.0815], [128.8979, 35.1213], [128.9184, 35.0819], [128.958, 35.1369], [128.9584, 35.0504], [129.0004, 35.046], [128.997, 35.0757], [129.0219, 35.06], [129.0638, 35.1208], [129.1011, 35.0923], [129.1286, 35.1141], [129.1203, 35.1496], [129.1943, 35.1555], [129.2557, 35.247], [129.2692, 35.3168], [129.3604, 35.3536], [129.3578, 35.4518], [129.3919, 35.4757], [129.3735, 35.5328], [129.4129, 35.4721], [129.4546, 35.5133], [129.4673, 35.5997], [129.4431, 35.6361], [129.4977, 35.7479], [129.5356, 35.939], [129.5873, 36.0169], [129.5548, 36.0825], [129.4533, 35.9933], [129.3809, 36.0415], [129.4305, 36.0974], [129.3823, 36.2018], [129.3866, 36.3227], [129.4409, 36.4079], [129.4226, 36.6166], [129.4739, 36.7306], [129.4127, 37.0181], [129.4302, 37.0731], [129.3789, 37.1301], [129.3311, 37.2822], [129.1482, 37.5051], [129.1087, 37.5974], [129.0733, 37.613], [129.0642, 37.6789], [128.6925, 38.0649]];
+  const KR_JEJU=[[126.8234, 33.5594], [126.6488, 33.5534], [126.5824, 33.5293], [126.4849, 33.5208], [126.3106, 33.4645], [126.1958, 33.3667], [126.1611, 33.3008], [126.1714, 33.2694], [126.27, 33.1976], [126.3334, 33.2382], [126.5655, 33.2329], [126.6407, 33.2647], [126.7418, 33.2802], [126.7801, 33.3056], [126.8406, 33.3102], [126.8735, 33.373], [126.9255, 33.4132], [126.9392, 33.4309], [126.9324, 33.4513], [126.9536, 33.465], [126.9461, 33.478], [126.9324, 33.4649], [126.9129, 33.5066]];
+  const KR_GEOJE=[[128.7239, 34.9545], [128.7249, 35.0189], [128.7029, 35.0329], [128.6819, 35.0046], [128.6939, 34.9863], [128.6106, 34.9549], [128.6164, 34.9219], [128.6455, 34.8907], [128.5737, 34.9101], [128.4949, 34.8804], [128.4915, 34.8499], [128.5288, 34.8081], [128.5908, 34.8423], [128.6045, 34.8354], [128.5916, 34.7912], [128.5604, 34.7818], [128.5735, 34.7535], [128.6045, 34.7665], [128.5986, 34.74], [128.6182, 34.7256], [128.584, 34.7051], [128.6939, 34.7362], [128.6572, 34.757], [128.6864, 34.8081], [128.7417, 34.7907], [128.7206, 34.8423], [128.7429, 34.8445], [128.7476, 34.8858], [128.7144, 34.8764], [128.7341, 34.9223]];
+  const KR_CITIES={"Seoul": [126.978, 37.566], "Suwon": [127.028, 37.263], "Cheongju": [127.489, 36.642], "Hongseong": [126.66, 36.601], "Andong": [128.729, 36.568], "Changwon": [128.681, 35.228], "Chuncheon": [127.734, 37.874], "Jeonju": [127.148, 35.824], "JejuCity": [126.522, 33.5]};
+
+const canvas = document.getElementById('krCanvas');
+const stage  = document.getElementById('krStage');
+if (canvas && stage) {
+  const C = { land:0xeef4fa, shell:0xf7fafc, shell3:0xdfe8f0, accent:0x3455fa, warm:0xff5a4d };
+  KR_CITIES.Busan = [129.075, 35.180];   // service-company focus city for the story
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+
+  const scene = new THREE.Scene();
+
+  // tilted top-down isometric, north up, so the country reads clearly
+  let asp = 1; const FR = 82;
+  const cam = new THREE.OrthographicCamera(-FR*asp/2, FR*asp/2, FR/2, -FR/2, -300, 500);
+  cam.position.set(0, 94, 58);
+  cam.lookAt(0, 0, 0);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xc4d8e8, 1.35));
+  const key = new THREE.DirectionalLight(0xffffff, 2.15);
+  key.position.set(40, 74, 46); key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 5; key.shadow.bias = -0.0008;
+  const SS = 95;
+  Object.assign(key.shadow.camera, { left:-SS, right:SS, top:SS, bottom:-SS, near:1, far:300 });
+  key.shadow.camera.updateProjectionMatrix();
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xe6f1fb, 0.6);
+  fill.position.set(-44, 30, -30); scene.add(fill);
+
+  const clay = (color,o={}) => new THREE.MeshStandardMaterial({ color, roughness:o.rough??0.92, metalness:0 });
+  const M = { land:clay(C.land,{rough:1}), shell:clay(C.shell), shell3:clay(C.shell3), accent:clay(C.accent,{rough:.5}), warm:clay(C.warm,{rough:.6}) };
+  const rbox = (w,h,d,mat=M.shell,r=0.14) => { const m=new THREE.Mesh(new RoundedBoxGeometry(w,h,d,3,Math.min(r,Math.min(w,h,d)/2.05)),mat); m.castShadow=true; m.receiveShadow=true; return m; };
+  const put = (m,x,y,z)=>{ m.position.set(x,y,z); return m; };
+
+  const grp = new THREE.Group();
+
+  // ---- equirectangular projection ----
+  const latC=36.3, lonC=127.85, SCL=15, kx=Math.cos(latC*Math.PI/180)*SCL;
+  const proj = (lon,lat)=>[ (lon-lonC)*kx, (lat-latC)*SCL ];   // [x_east, y_north]
+
+  // ---- floor: extruded country silhouette (mainland + Jeju + Geoje) ----
+  const mkShape = (ring)=>{ const s=new THREE.Shape(); ring.forEach((p,i)=>{ const [x,y]=proj(p[0],p[1]); i?s.lineTo(x,y):s.moveTo(x,y); }); s.closePath(); return s; };
+  const floorGeo = new THREE.ExtrudeGeometry(
+    [mkShape(KR_MAINLAND), mkShape(KR_JEJU), mkShape(KR_GEOJE)],
+    { depth:2.0, bevelEnabled:true, bevelThickness:0.5, bevelSize:0.5, bevelSegments:2 });
+  floorGeo.rotateX(-Math.PI/2);                 // shape +Y(north) -> world -Z; top faces up
+  floorGeo.computeBoundingBox();
+  const FLOOR_TOP = floorGeo.boundingBox.max.y;
+  const floor = new THREE.Mesh(floorGeo, M.land);
+  floor.receiveShadow = true; floor.castShadow = true; grp.add(floor);
+
+  const cityPos = (name)=>{ const [lon,lat]=KR_CITIES[name]; const [x,y]=proj(lon,lat); return new THREE.Vector3(x, FLOOR_TOP, -y); };
+
+  // ---- regional service-company buildings ----
+  const SERVICE = ['Cheongju','Hongseong','Andong','Busan','Chuncheon','Jeonju','JejuCity'];
+  const service = (pos)=>{
+    const g=new THREE.Group();
+    g.add(put(rbox(2.0,2.6,2.0,M.shell,.18), 0,1.3,0));
+    g.add(put(rbox(1.3,0.8,1.3,M.shell3,.12), 0,3.2,0));
+    g.add(put(rbox(0.5,0.5,0.5,M.accent,.08), 0,3.9,0));
+    g.position.copy(pos); grp.add(g); return g;
+  };
+  const buildings = {};
+  SERVICE.forEach(n=>{ buildings[n] = service(cityPos(n)); });
+
+  // ---- HQ in Seoul ----
+  const hqPos = cityPos('Seoul');
+  const pulses = [];   // radio-wave rings broadcasting from HQ, animated in the loop
+  {
+    const g=new THREE.Group();
+    g.add(put(rbox(2.6,5.4,2.6,M.shell,.2), 0,2.7,0));
+    g.add(put(rbox(1.9,1.0,1.9,M.shell3,.14), 0,5.8,0));
+    g.add(put(rbox(0.8,0.8,0.8,M.accent,.1), 0,6.6,0));
+    // bkmgLab wordmark on the tower face (front side, toward the camera)
+    const sTex=new THREE.TextureLoader().load('assets/bkmglab-black-bold7.png');
+    sTex.colorSpace=THREE.SRGBColorSpace; sTex.anisotropy=8;
+    const sign=new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.0*(344/1506)),
+      new THREE.MeshBasicMaterial({ map:sTex, transparent:true }));
+    sign.position.set(0, 3.5, 1.31); g.add(sign);
+    const beam=new THREE.Mesh(new THREE.CylinderGeometry(.25,.9,16,20,1,true),
+      new THREE.MeshBasicMaterial({color:C.accent,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+    beam.position.y=8.5; g.add(beam);
+    g.position.copy(hqPos); grp.add(g);
+    // concentric radio pulses on the ground around HQ
+    const ringGeo=new THREE.RingGeometry(0.92,1.0,48); ringGeo.rotateX(-Math.PI/2);
+    for(let i=0;i<3;i++){
+      const m=new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color:C.accent, transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide }));
+      m.position.set(hqPos.x, FLOOR_TOP+0.15, hqPos.z); grp.add(m); pulses.push({ mesh:m, phase:i/3 });
+    }
+  }
+
+  // ---- blue routes + vehicles ----
+  const RY = FLOOR_TOP + 0.08;
+  const routes = [];
+  const mkTruck = ()=>{ const t=new THREE.Group();
+    t.add(put(rbox(0.9,0.6,1.5,M.accent,.12), 0,0.3,0));
+    t.add(put(rbox(0.8,0.55,0.7,M.shell,.1), 0,0.78,-0.32)); return t; };
+  const mkBoat = ()=>{ const g=new THREE.Group();
+    g.add(put(rbox(1.1,0.42,2.1,M.shell,.18), 0,0.21,0));      // white hull
+    g.add(put(rbox(0.72,0.5,0.85,M.accent,.1), 0,0.62,-0.2));  // blue cabin
+    return g; };
+  // a route: A<->B with a gentle arc off the surface, a vehicle ping-ponging along it
+  const addRoute = (a,b,veh,{arc=0.9, baseY=RY, yoff=0.16, phase=Math.random()}={})=>{
+    const A=a.clone().setY(baseY), B=b.clone().setY(baseY);
+    const mid=A.clone().lerp(B,0.5); mid.y += arc;
+    const curve=new THREE.CatmullRomCurve3([A, mid, B]);
+    grp.add(new THREE.Mesh(new THREE.TubeGeometry(curve,44,0.13,8,false), M.accent));
+    grp.add(veh);
+    routes.push({ curve, veh, yoff, phase, speed:0.11+Math.random()*0.03 });
+  };
+
+  // land service cities: HQ -> city by truck
+  const SERVICE_LAND = SERVICE.filter(n=>n!=='JejuCity');
+  SERVICE_LAND.forEach((n,i)=> addRoute(hqPos, cityPos(n), mkTruck(), { phase:(i*0.37)%1 }));
+
+  // Jeju can't be reached by road — truck runs HQ -> nearest southern coast,
+  // then a boat ferries that port <-> Jeju across the strait.
+  const jejuPos = cityPos('JejuCity');
+  let PORT=null, bestD=Infinity;
+  for (const [lon,lat] of KR_MAINLAND){
+    const [x,y]=proj(lon,lat); const dx=x-jejuPos.x, dz=(-y)-jejuPos.z;
+    const d=dx*dx+dz*dz; if (d<bestD){ bestD=d; PORT=new THREE.Vector3(x, FLOOR_TOP, -y); }
+  }
+  // small dock at the port
+  { const dock=rbox(1.8,0.5,1.8,M.shell3,.1); dock.position.set(PORT.x, FLOOR_TOP+0.2, PORT.z); grp.add(dock); }
+  addRoute(hqPos, PORT, mkTruck(), { phase:0.2 });                       // road leg
+  addRoute(PORT, jejuPos, mkBoat(), { arc:0.2, baseY:FLOOR_TOP-0.55, yoff:0.1, phase:0.5 }); // sea leg
+
+  // ---- Busan region: local stores + orange lines to the Busan building
+  //      (built hidden, revealed by scroll in phase 3) ----
+  const busanLocal = cityPos('Busan');
+  const mkStore = ()=>{ const g=new THREE.Group();
+    g.add(put(rbox(1.1,0.9,1.1,M.shell,.14), 0,0.45,0));
+    g.add(put(rbox(0.8,0.28,0.8,M.warm,.06), 0,1.05,0)); return g; };
+  // a small blue gear (cog) — the "part" a service truck carries out to a store
+  const mkGear = ()=>{ const g=new THREE.Group();
+    const R=0.3, th=0.12, N=8;
+    const disk=new THREE.Mesh(new THREE.CylinderGeometry(R,R,th,20), M.accent); disk.castShadow=true; g.add(disk);
+    for(let i=0;i<N;i++){ const a=i/N*Math.PI*2; const tooth=rbox(0.12,th,0.12,M.accent,.02);
+      tooth.position.set(Math.cos(a)*(R+0.03),0,Math.sin(a)*(R+0.03)); tooth.rotation.y=-a; g.add(tooth); }
+    g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,th+0.03,14), M.shell)); // hub
+    return g; };
+  // small delivery truck: orange cab (matches the orange line) + blue gear in the bed
+  const mkStoreTruck = ()=>{ const t=new THREE.Group();
+    t.add(put(rbox(0.55,0.42,0.5,M.warm,.08), 0,0.5,0.42));    // orange cab (front = +Z)
+    t.add(put(rbox(0.62,0.16,0.86,M.shell3,.05), 0,0.32,-0.12)); // flat bed
+    t.add(put(rbox(0.62,0.24,0.06,M.shell,.03), 0,0.5,-0.55));   // tailboard
+    const gear=mkGear(); gear.position.set(0,0.6,-0.12); gear.scale.setScalar(0.8); t.add(gear);
+    t.userData.gear=gear; return t; };
+  const storeItems = [];
+  const storeCars  = [];
+  // point-in-polygon over the projected mainland, so every store sits on solid
+  // ground (with a margin) rather than spilling into the sea.
+  const poly = KR_MAINLAND.map(p=>proj(p[0],p[1]));
+  const inLand = (X,Y)=>{ let c=false; for(let i=0,j=poly.length-1;i<poly.length;j=i++){ const xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1]; if(((yi>Y)!==(yj>Y)) && (X < (xj-xi)*(Y-yi)/(yj-yi)+xi)) c=!c; } return c; };
+  const solidLand = (v)=>{ const X=v.x, Y=-v.z, m=0.9; return inLand(X,Y)&&inLand(X+m,Y)&&inLand(X-m,Y)&&inLand(X,Y+m)&&inLand(X,Y-m); };
+  // spread the region's stores out across the surrounding land — one per heading,
+  // pushed as far out as still lands on solid ground (not a tidy ring).
+  const storePos = [];
+  for (let a=0; a<360 && storePos.length<9; a+=30){
+    for (const r of [13,11,9,7,5]){
+      const sp=busanLocal.clone().add(new THREE.Vector3(Math.cos(a*Math.PI/180)*r, 0, Math.sin(a*Math.PI/180)*r));
+      if (solidLand(sp) && !storePos.some(s=>s.distanceTo(sp)<3.0)){ storePos.push(sp); break; }
+    }
+  }
+  storePos.forEach(sp=>{
+    const st = mkStore(); st.position.copy(sp); st.scale.setScalar(0.001); grp.add(st);
+    const a=sp.clone().setY(RY), b=busanLocal.clone().setY(RY);
+    const mid=a.clone().lerp(b,0.5); mid.y += 0.6;
+    const curve=new THREE.CatmullRomCurve3([a, mid, b]);
+    const mat=new THREE.MeshStandardMaterial({ color:C.warm, roughness:.6, metalness:0, transparent:true, opacity:0 });
+    grp.add(new THREE.Mesh(new THREE.TubeGeometry(curve,24,0.09,8,false), mat));
+    storeItems.push({ st, mat });
+    // a delivery truck ping-ponging along this orange line, gear in the back
+    const car=mkStoreTruck(); car.scale.setScalar(0.001); grp.add(car);
+    storeCars.push({ veh:car, curve, gear:car.userData.gear, phase:Math.random()*2, speed:0.18+Math.random()*0.06 });
+  });
+  const revealStores = (f)=>{ const e=Math.max(0.0001, f*f*(3-2*f));
+    for(const it of storeItems){ it.st.scale.setScalar(e); it.mat.opacity=0.9*e; }
+    for(const c of storeCars){ c.veh.scale.setScalar(e); } };
+  revealStores(0);
+
+  // center the whole map at the origin in X/Z
+  const box=new THREE.Box3().setFromObject(grp);
+  const ctr=box.getCenter(new THREE.Vector3());
+  grp.position.set(-ctr.x, 0, -ctr.z);
+  scene.add(grp);
+
+  // ---- scroll-driven camera story ----
+  const gp = grp.position;
+  const T_HQ    = hqPos.clone().add(gp);
+  const T_BUSAN = busanLocal.clone().add(gp);
+  const T_FULL  = new THREE.Vector3(0, 0, 0);      // country centre
+  const OFFSET  = new THREE.Vector3(0, 94, 58);    // fixed iso viewing direction
+  // pan shifts the subject right of the left-hand copy; fr is the ortho zoom
+  const KF = [
+    { t:T_FULL,  fr:88, pan:0.10 },   // overview — whole country on entry
+    { t:T_HQ,    fr:30, pan:0.30 },   // phase 1 — HQ in Goyang
+    { t:T_BUSAN, fr:26, pan:0.30 },   // phase 2 — dispatch to the Busan-area company
+    { t:T_BUSAN, fr:52, pan:0.22 },   // phase 3 — zoom out, region stores appear
+    { t:T_FULL,  fr:88, pan:0.10 },   // phase 4 — whole country, closing belief
+  ];
+  const N = KF.length;
+  const clamp01 = v=>Math.min(1,Math.max(0,v));
+  const easeInOut = t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+
+  const netflow = document.getElementById('netflow');
+  const netProgress = ()=>{ const r=netflow.getBoundingClientRect(); const total=r.height-innerHeight; return total<=0?0:clamp01(-r.top/total); };
+  const desired = ()=>{
+    const p=netProgress(), x=p*(N-1), i=Math.min(N-2,Math.floor(x)), f=easeInOut(clamp01(x-i));
+    const a=KF[i], b=KF[i+1];
+    return { target:a.t.clone().lerp(b.t,f), fr:a.fr+(b.fr-a.fr)*f, pan:a.pan+(b.pan-a.pan)*f, stage:Math.round(x), p };
+  };
+
+  const panels=[...document.querySelectorAll('.net-panel')];
+  let activePanel=-1;
+  let curT=KF[0].t.clone(), curFr=KF[0].fr, curPan=KF[0].pan;
+
+  function resize(){ const w=stage.clientWidth, h=stage.clientHeight; if(!w||!h) return; asp=w/h; renderer.setSize(w,h,false); }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  let visible=false;
+  new IntersectionObserver((es)=>{ es.forEach(e=>{ visible=e.isIntersecting; }); }, {threshold:0}).observe(stage);
+
+  const clock=new THREE.Clock();
+  let elapsed=0;
+  function tick(){
+    requestAnimationFrame(tick);
+    const dt=Math.min(clock.getDelta(),0.05);
+    if(!visible) return;
+
+    const d=desired();
+    curT.lerp(d.target,0.14); curFr+=(d.fr-curFr)*0.14; curPan+=(d.pan-curPan)*0.14;
+    const look=curT.clone(); look.x -= curPan*curFr;                 // frame subject right of the copy
+    cam.position.copy(look).add(OFFSET); cam.lookAt(look);
+    cam.left=-curFr*asp/2; cam.right=curFr*asp/2; cam.top=curFr/2; cam.bottom=-curFr/2;
+    cam.updateProjectionMatrix();
+
+    revealStores(clamp01((d.p - 0.5) / 0.25));                       // grow region stores across phase 2->3
+    const idx = d.stage;                                             // stage 0 = overview panel, then 1..4
+    if(idx!==activePanel){ activePanel=idx; panels.forEach((el,i)=>el.classList.toggle('on', i===activePanel)); }
+
+    for(const r of routes){
+      r.phase += dt*r.speed;
+      const tri=(r.phase%2), t=tri<1?tri:2-tri, dir=tri<1?1:-1;
+      const pt=r.curve.getPointAt(t), tan=r.curve.getTangentAt(t).multiplyScalar(dir);
+      r.veh.position.copy(pt); r.veh.position.y += r.yoff;
+      r.veh.rotation.y = Math.atan2(tan.x, tan.z);
+    }
+    // Busan region: delivery trucks running out along the orange lines, cog spinning
+    for(const c of storeCars){
+      c.phase += dt*c.speed;
+      const tri=c.phase%2, t=tri<1?tri:2-tri, dir=tri<1?1:-1;
+      const pt=c.curve.getPointAt(t), tan=c.curve.getTangentAt(t).multiplyScalar(dir);
+      c.veh.position.copy(pt); c.veh.position.y += 0.16;
+      c.veh.rotation.y = Math.atan2(tan.x, tan.z);
+      c.gear.rotation.y += dt*1.8;
+    }
+    // radio pulses expanding from HQ
+    elapsed += dt;
+    for(const pl of pulses){
+      const t=((elapsed*0.32)+pl.phase)%1;
+      const s=0.5 + t*9;
+      pl.mesh.scale.set(s,1,s);
+      pl.mesh.material.opacity=(1-t)*0.5;
+    }
+    renderer.render(scene, cam);
+  }
+  tick();
+
+  window.__KR = { scene, cam, grp, routes, KF, desired, netProgress, revealStores, buildings };
+}
+</script>
+</body>
+</html>
