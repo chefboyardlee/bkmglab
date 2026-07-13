@@ -54,6 +54,18 @@
   h1, h3.big{ font-family:var(--font-title); }
   /* the step's primary title too (the .en subtitle label stays Inter) */
   .step .ttl > span:not(.en){ font-family:var(--font-title); letter-spacing:0; }
+  /* English is a deliberate opt-in; when it's on, the whole site wears SF Pro
+     (Apple's system font) in place of the Inter / Krub / pixel-display stack.
+     Korean keeps its own faces. -apple-system + BlinkMacSystemFont resolve to
+     SF Pro on Apple devices; the rest is graceful fallback elsewhere. */
+  html[lang="en"]{
+    --font-head:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro","Helvetica Neue",Arial,sans-serif;
+    --font-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro","Helvetica Neue",Arial,sans-serif;
+    --font-title:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro","Helvetica Neue",Arial,sans-serif;
+  }
+  /* SF Pro Display headings read better with slightly tighter tracking than the
+     pixel face wanted (the pixel face used 0) */
+  html[lang="en"] h1, html[lang="en"] h3.big, html[lang="en"] .net-title{ letter-spacing:-.02em; }
 
   /* ---------- fixed 3D stage ---------- */
   #app{position:fixed;inset:0;z-index:0;overflow:hidden}
