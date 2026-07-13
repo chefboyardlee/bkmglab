@@ -272,6 +272,65 @@
     transition:opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1);}
   .reveal.in{opacity:1;transform:none}
 
+  /* ---------- iMessage-style consult chat (pinned, scroll-driven) ---------- */
+  .chat-sec{ position:relative; height:370vh; background:var(--bg);
+    --chat-bg:var(--bg); --imsg-sent:#5b82ff; }
+  .chat-sticky{ position:sticky; top:0; height:100vh; display:flex; align-items:center; justify-content:center; }
+  .chat-head{ text-align:center; }
+  .chat-head .eyebrow{ justify-content:center; }
+  .chat-head h3.big{ max-width:none; margin:0 auto; font-size:clamp(16px,2vw,26px); white-space:nowrap; }
+  .chat-thread{ max-width:540px; margin:46px auto 0; display:flex; flex-direction:column; }
+  .msg{ display:flex; flex-direction:column; max-width:80%; margin-top:clamp(22px,3.6vh,42px); }
+  .msg:first-child{ margin-top:0; }
+  .msg.cont{ margin-top:10px; }   /* consecutive bubble from the same sender */
+  .msg.sent{ align-self:flex-end; align-items:flex-end; transform-origin:bottom right; }
+  .msg.recv{ align-self:flex-start; align-items:flex-start; transform-origin:bottom left; }
+  .msg .sender{ font-family:var(--font-head); font-size:11px; font-weight:600; letter-spacing:.03em;
+    color:var(--ink-soft); margin:0 9px 8px; display:flex; align-items:center; gap:7px; }
+  .msg .sender .dot{ width:18px; height:18px; border-radius:50%; background:var(--imsg-sent);
+    display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:9px; font-weight:800; font-family:var(--font-head); }
+  .bubble{ position:relative; padding:14px 21px; font-size:16px; line-height:1.5;
+    border-radius:27px; word-break:keep-all; }
+  .msg.sent .bubble{ background:var(--imsg-sent); color:#fff; box-shadow:0 5px 16px rgba(91,130,255,.32); }
+  .msg.recv .bubble{ background:#fff; color:var(--ink); box-shadow:0 4px 14px rgba(11,16,32,.10); }
+  /* iMessage tails (two-pseudo mask; ::after matches the section background) — bigger + rounder */
+  .msg.sent .bubble::before{ content:""; position:absolute; z-index:0; bottom:0; right:-9px;
+    height:22px; width:23px; background:var(--imsg-sent); border-bottom-left-radius:20px; }
+  .msg.sent .bubble::after{ content:""; position:absolute; z-index:1; bottom:0; right:-23px;
+    height:22px; width:28px; background:var(--chat-bg); border-bottom-left-radius:15px; }
+  .msg.recv .bubble::before{ content:""; position:absolute; z-index:0; bottom:0; left:-9px;
+    height:22px; width:23px; background:#fff; border-bottom-right-radius:20px; }
+  .msg.recv .bubble::after{ content:""; position:absolute; z-index:1; bottom:0; left:-23px;
+    height:22px; width:28px; background:var(--chat-bg); border-bottom-right-radius:15px; }
+  .msg .stamp{ font-family:var(--font-head); font-size:10.5px; color:var(--ink-soft);
+    margin:8px 9px 0; letter-spacing:.02em; }
+  /* pop-in with a bounce, driven by scroll via .show */
+  .chat-thread .msg{ opacity:0; transform:translateY(20px) scale(.5);
+    transition:opacity .28s ease, transform .55s cubic-bezier(.34,1.62,.58,1); }
+  .chat-thread .msg.show{ opacity:1; transform:none; }
+
+  /* ---------- float-up word hero (scroll-pinned, theothersideoftruth-style) ---------- */
+  .floatword{ position:relative; height:300vh; background:var(--bg); }
+  .fw-sticky{ position:sticky; top:0; height:100vh; overflow:hidden; background:var(--bg); }
+  /* black field that rises from the bottom to swallow the pile */
+  .fw-fill{ position:absolute; left:0; top:100%; width:100%; height:200%; z-index:1;
+    background:linear-gradient(0deg, var(--dark) 62%, rgba(8,11,24,0)); will-change:transform; }
+  /* staggered, overlapping pile of letters (theothersideoftruth-style) */
+  .fw-word{ position:absolute; inset:0; z-index:2;
+    font-family:var(--font-head); font-weight:800; color:var(--dark); line-height:.8; letter-spacing:-.04em; }
+  .fw-word span{ position:absolute; display:inline-block; will-change:transform; transform-origin:center;
+    transform:translate(var(--sx,0%), var(--sy,0vh)) rotate(var(--rot,0deg)); }
+  .fw-word span:nth-child(1){ left:1%;  top:40%; font-size:30vw; --rot:-8deg; }
+  .fw-word span:nth-child(2){ left:25%; top:24%; font-size:35vw; --rot:5deg; }
+  .fw-word span:nth-child(3){ left:43%; top:48%; font-size:33vw; --rot:-4deg; }
+  .fw-word span:nth-child(4){ left:14%; top:56%; font-size:29vw; --rot:9deg; }
+  .fw-word span:nth-child(5){ left:59%; top:30%; font-size:31vw; --rot:-7deg; }
+  .fw-word span:nth-child(6){ left:71%; top:54%; font-size:27vw; --rot:6deg; }
+  .fw-word span:nth-child(7){ left:37%; top:64%; font-size:30vw; --rot:-11deg; }
+  /* black veil at the bottom so letter feet dissolve into the rising field */
+  .fw-sticky:after{ content:""; position:absolute; left:0; bottom:-1px; width:100%; height:36%; z-index:3;
+    background:linear-gradient(0deg, var(--dark) 22%, rgba(8,11,24,0)); pointer-events:none; }
+
   /* ---------- round carousel (3D brand ring) ---------- */
   .ring-stage{
     margin-top:8px;
@@ -388,6 +447,8 @@
   /* dark CTA + footer */
   .dark-sec{background:var(--dark);color:#fff}
   .dark-sec h3.big{max-width:22ch}
+  #contact .reveal{text-align:center}
+  #contact h3.big{margin-left:auto;margin-right:auto}
   .btn{
     display:inline-flex;align-items:center;gap:10px;margin-top:34px;
     background:#fff;color:var(--dark);border-radius:100px;
@@ -412,6 +473,9 @@
   @media(max-width:700px){ .fgrid{grid-template-columns:1fr} .fbot{flex-direction:column;gap:8px} }
   /* ---------- nationwide service network — scroll-driven map story ---------- */
   #netflow{ position:relative; height:520vh; background:var(--bg-alt); }   /* overview + 4 phases */
+  /* soft fade from the paper section above into bg-alt, so the seam isn't a hard line */
+  #netflow::before{ content:""; position:absolute; left:0; top:0; width:100%; height:600px; z-index:0;
+    background:linear-gradient(to bottom, var(--paper), rgba(242,247,251,0)); pointer-events:none; }
   .net-sticky{ position:sticky; top:0; height:100vh; overflow:hidden; }
   .net-sticky canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
   /* left scrim so the copy always reads over the map */
@@ -421,7 +485,7 @@
     opacity:0; transform:translateY(20px); transition:opacity .7s ease, transform .7s ease; }
   .net-panel.on{ opacity:1; transform:none; }
   .net-title{ font-family:var(--font-title); letter-spacing:0; font-weight:600;
-    font-size:clamp(22px,2.7vw,36px); line-height:1.22; }
+    font-size:clamp(20px,2.4vw,32px); line-height:1.22; }
   .net-sub{ margin-top:18px; max-width:32ch; color:var(--ink-2); font-size:15px; line-height:1.72; }
   @media(max-width:700px){
     .net-copy{ align-items:flex-start; padding-top:11vh;
@@ -619,62 +683,41 @@
     </div>
   </section>
 
-  <!-- STANDARDS / STATS -->
-  <section class="solid" style="background:var(--bg-alt)">
-    <div class="wrap split">
-      <div class="reveal">
-        <div class="eyebrow" data-ko="운영 기준" data-en="How we operate"></div>
-        <h3 class="big" data-ko="주방이 멈추면 매출이 멈춥니다."
-                        data-en="When the kitchen stops, revenue stops."></h3>
-      </div>
-      <div class="reveal">
-        <p style="color:var(--ink-2);font-size:15px"
-           data-ko="장비 한 대가 서면 그날 영업이 흔들립니다. bkmgLab은 설치 이력과 부품 재고를 함께 관리해 고장 접수부터 부품 출고까지 시간을 줄입니다."
-           data-en="One machine down can shake a whole day's trade. bkmgLab holds install history and parts stock together, which is how we cut the time from fault report to part shipped."></p>
-        <div class="stats">
-          <div class="stat"><div class="v" data-count="3800">0</div>
-            <div class="l" data-ko="프랜차이즈 브랜드 DB" data-en="Franchise brands in our DB"></div></div>
-          <div class="stat"><div class="v" data-count="24">0</div>
-            <div class="l" data-ko="시간 내 견적 회신" data-en="Hours to quote"></div></div>
-          <div class="stat"><div class="v" data-count="100">0</div>
-            <div class="l" data-ko="% 정식 수입 채널" data-en="% official import channels"></div></div>
+  <!-- CONSULT CHAT (iMessage style, pinned + scroll-driven pop-in) -->
+  <section class="chat-sec" id="consult">
+    <div class="chat-sticky">
+      <div class="wrap">
+        <div class="reveal chat-head">
+          <div class="eyebrow" data-ko="프로젝트의 시작" data-en="Where a project begins"></div>
+          <h3 class="big" data-ko="모든 건 전화 한 통에서 시작됩니다." data-en="It all begins with a call."></h3>
         </div>
-        <p style="color:var(--ink-soft);font-size:11px;margin-top:24px"
-           data-ko="* 위 수치는 데모용 자리표시자입니다. 실제 수치로 교체하세요."
-           data-en="* Placeholder figures for the demo. Replace with real numbers."></p>
+        <div class="chat-thread">
+          <div class="msg sent">
+            <div class="bubble" data-ko="안녕하세요, 저희는 전국에 50개 매장을 운영하는 브런치 카페 브랜드입니다. 이번에 피자를 메뉴에 도입하려고 하는데, 혹시 도움이 될 만한 솔루션이 있을까요?" data-en="Hello — we're a brunch café brand with 50 stores nationwide. We're looking to bring pizza onto our menu, and we were wondering if you have any solutions that could help?"></div>
+            <div class="stamp" data-ko="오후 3:39" data-en="3:39 PM"></div>
+          </div>
+          <div class="msg recv">
+            <div class="sender"><span class="dot">b</span><span>bkmgLab</span></div>
+            <div class="bubble" data-ko="네, 사실 그런 경우에 딱 맞는 효과적인 솔루션을 저희가 몇 가지 갖고 있습니다." data-en="Yes — we actually have a few effective solutions for exactly that."></div>
+          </div>
+          <div class="msg recv cont">
+            <div class="bubble" data-ko="관련 자료를 좀 더 자세히 정리해 보내드리겠습니다." data-en="We'll put together some more detailed information and send it over."></div>
+            <div class="stamp" data-ko="오후 3:41" data-en="3:41 PM"></div>
+          </div>
+          <div class="msg sent">
+            <div class="bubble" data-ko="좋습니다! 이 프로젝트 얼른 시작하고 싶네요." data-en="Great — we're excited to get this project started!"></div>
+            <div class="stamp" data-ko="오후 3:42 · 읽음" data-en="3:42 PM · Read"></div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- FAQ -->
-  <section class="solid" id="faq">
-    <div class="wrap split">
-      <div class="reveal">
-        <div class="eyebrow" data-ko="자주 묻는 질문" data-en="FAQ"></div>
-        <h3 class="big" data-ko="궁금할 만한 것들." data-en="The things people ask."></h3>
-      </div>
-      <div class="faq reveal" id="faqlist">
-        <div class="q">
-          <div class="head"><span data-ko="주문하면 얼마나 걸리나요?" data-en="How long does an order take?"></span><span class="sign">+</span></div>
-          <div class="body"><p data-ko="국내 재고 품목은 접수 후 영업일 기준 1–2일 내 출고됩니다. 수입 장비는 모델과 선적 일정에 따라 달라지며, 견적 단계에서 도착 예정일을 함께 안내합니다."
-                               data-en="Items in domestic stock ship within 1–2 business days. Imported equipment depends on the model and the sailing schedule; we give you an ETA at the quote stage."></p></div>
-        </div>
-        <div class="q">
-          <div class="head"><span data-ko="식자재와 장비를 같이 주문할 수 있나요?" data-en="Can I order ingredients and equipment together?"></span><span class="sign">+</span></div>
-          <div class="body"><p data-ko="네. 같은 창구로 접수되고, 창고에서 매장 단위로 분류해 함께 배송합니다. 정산도 하나로 묶입니다."
-                               data-en="Yes. They come through the same channel, get sorted by store at the warehouse, and ship together. Billing is consolidated too."></p></div>
-        </div>
-        <div class="q">
-          <div class="head"><span data-ko="설치와 A/S는 어떻게 되나요?" data-en="What about installation and service?"></span><span class="sign">+</span></div>
-          <div class="body"><p data-ko="장비는 배송 후 설치와 시운전을 진행하고, 사용 교육을 마친 뒤 인계합니다. 설치 이력이 남아 이후 A/S 요청 시 모델과 설치일을 바로 조회할 수 있습니다."
-                               data-en="Equipment is installed and commissioned after delivery, and handed over only once your team has been trained. Because the install is on record, any later service request pulls up the model and install date immediately."></p></div>
-        </div>
-        <div class="q">
-          <div class="head"><span data-ko="단일 매장도 거래할 수 있나요?" data-en="Do you work with single stores?"></span><span class="sign">+</span></div>
-          <div class="body"><p data-ko="가능합니다. 프랜차이즈 본사뿐 아니라 개인 매장도 같은 흐름으로 처리합니다."
-                               data-en="Yes. Franchise headquarters and independent stores go through exactly the same flow."></p></div>
-        </div>
-      </div>
+  <!-- FLOAT-UP WORD HERO -->
+  <section class="floatword" id="floatword">
+    <div class="fw-sticky">
+      <div class="fw-fill" id="fwfill"></div>
+      <div class="fw-word" id="fwword"><span>b</span><span>k</span><span>m</span><span>g</span><span>L</span><span>a</span><span>b</span></div>
     </div>
   </section>
 
@@ -1447,14 +1490,55 @@ const io = new IntersectionObserver((entries) => {
 }, { threshold: 0.2 });
 document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 
-// FAQ accordion
-document.querySelectorAll('#faqlist .q').forEach(q => {
-  q.addEventListener('click', () => {
-    const open = q.classList.contains('open');
-    document.querySelectorAll('#faqlist .q').forEach(o => o.classList.remove('open'));
-    if (!open) q.classList.add('open');
-  });
-});
+/* consult chat — pinned section, each message pops in on scroll (bidirectional) */
+(() => {
+  const sec = document.getElementById('consult');
+  if (!sec) return;
+  const msgs = [...sec.querySelectorAll('.msg')];
+  const thr = [0.12, 0.34, 0.56, 0.80];    // scroll progress at which each message pops
+  let raf = 0;
+  const update = () => {
+    raf = 0;
+    const total = sec.offsetHeight - innerHeight;
+    const p = total > 0 ? Math.min(Math.max(-sec.getBoundingClientRect().top, 0), total) / total : 0;
+    msgs.forEach((m, i) => m.classList.toggle('show', p >= thr[i]));
+  };
+  const req = () => { if (!raf) raf = requestAnimationFrame(update); };
+  addEventListener('scroll', req, { passive: true });
+  addEventListener('resize', req);
+  update();
+})();
+
+/* float-up word hero — letters rise & spread on scroll, blue field floods up behind them */
+(() => {
+  const sec = document.getElementById('floatword');
+  if (!sec) return;
+  const fill = document.getElementById('fwfill');
+  const spans = [...document.querySelectorAll('#fwword span')];
+  // per-letter horizontal spread (% of own width), mirrored from the reference timeline
+  const SPREAD = [-50, 50, 10, -20, -40, 40, 10];
+  const T = 1.6, DUR = 1, BG_START = 0.6, RISE = -96;   // vh the letters travel up
+  const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  const ease = t => 1 - (1 - t) * (1 - t);              // easeOutQuad ~ GSAP power1.out
+  let raf = 0;
+  const update = () => {
+    raf = 0;
+    const total = sec.offsetHeight - innerHeight;
+    const p = total > 0 ? clamp01(-sec.getBoundingClientRect().top / total) : 0;
+    const t = p * T;
+    spans.forEach((s, i) => {
+      const lp = ease(clamp01((t - i * 0.1) / DUR));
+      s.style.setProperty('--sx', (SPREAD[i] * lp).toFixed(2) + '%');
+      s.style.setProperty('--sy', (RISE * lp).toFixed(2) + 'vh');
+    });
+    const bp = ease(clamp01((t - BG_START) / DUR));
+    fill.style.transform = `translateY(${(-85 * bp).toFixed(2)}%)`;
+  };
+  const req = () => { if (!raf) raf = requestAnimationFrame(update); };
+  addEventListener('scroll', req, { passive: true });
+  addEventListener('resize', req);
+  update();
+})();
 
 // count-up stats
 const counters = document.querySelectorAll('[data-count]');
