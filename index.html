@@ -531,15 +531,15 @@
     .net-panel{ width:auto; right:clamp(24px,6vw,96px); }
   }
   /* vector clouds that part & fade on entry to reveal the Korea map */
-  .net-clouds{ position:fixed; inset:0; z-index:60; pointer-events:none; overflow:hidden; visibility:hidden; }
+  .net-clouds{ position:fixed; inset:0; z-index:45; pointer-events:none; overflow:hidden; visibility:hidden; }
   .cloud-haze{ position:absolute; inset:-2%; will-change:opacity;
-    background:radial-gradient(128% 96% at 50% 42%,
-      #fff 0%, #fff 40%, rgba(240,246,251,.82) 62%, rgba(240,246,251,.36) 82%, rgba(240,246,251,0) 100%); }
+    background:radial-gradient(150% 130% at 50% 45%,
+      #fff 0%, #fff 60%, rgba(245,249,252,.92) 78%, rgba(245,249,252,.55) 90%, rgba(245,249,252,0) 100%); }
   .cloud-half{ position:absolute; top:-4%; height:108%; width:74%; will-change:transform,opacity; }
   .cloud-left{ left:0; transform-origin:82% 50%; }
   .cloud-right{ right:0; transform-origin:18% 50%; }
   .cloud-half img{ position:absolute; height:auto; display:block; user-select:none;
-    filter:drop-shadow(0 0 5px rgba(44,58,86,.5)) drop-shadow(0 7px 11px rgba(44,58,86,.16)); }
+    filter:blur(.5px) drop-shadow(0 10px 24px rgba(150,180,215,.26)); }
 </style>
 </head>
 <body>
@@ -1667,18 +1667,20 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
     raf = 0;
     const r = nf.getBoundingClientRect();
     const iH = innerHeight;
-    // the curtain fades in over the TAIL of the previous (Brands Universe) section...
-    const appear = clamp01((1.15 * iH - r.top) / (0.33 * iH));
-    // ...then parts smoothly as the map rises, fully parted by the time it's in full view (r.top = 0)
-    const open = easeInOut(clamp01((0.82 * iH - r.top) / (0.82 * iH)));
+    // the curtain snaps to FULLY SOLID quickly over the tail of the previous section (with a subtle
+    // settle-in so it isn't a dead crossfade)...
+    const appear = clamp01((1.18 * iH - r.top) / (0.16 * iH));
+    // ...then parts AND fades away as the map rises, fully gone by the time it's in full view (r.top = 0)
+    const open = easeInOut(clamp01((0.98 * iH - r.top) / (0.98 * iH)));
     if (appear <= 0 || open >= 1) { clouds.style.visibility = 'hidden'; return; }
     clouds.style.visibility = 'visible';
     clouds.style.opacity = appear.toFixed(3);
-    const tf = dir => `translateX(${(dir * 74 * open).toFixed(2)}%) translateY(${(-6 * open).toFixed(2)}%) scale(${(1 + 0.16 * open).toFixed(3)})`;
+    clouds.style.transform = `scale(${(1 + 0.05 * (1 - appear)).toFixed(3)})`;   // gentle settle on entrance
+    const tf = dir => `translateX(${(dir * 74 * open).toFixed(2)}%) translateY(${(-6 * open).toFixed(2)}%) scale(${(1 + 0.18 * open).toFixed(3)})`;
     left.style.transform = tf(-1);
     right.style.transform = tf(1);
     left.style.opacity = right.style.opacity = (1 - open).toFixed(3);
-    haze.style.opacity = clamp01(1 - open / 0.55).toFixed(3);
+    haze.style.opacity = clamp01(1 - open / 0.5).toFixed(3);
   };
   const req = () => { if (!raf) raf = requestAnimationFrame(update); };
   addEventListener('scroll', req, { passive: true });
