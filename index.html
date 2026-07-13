@@ -530,6 +530,17 @@
       background:linear-gradient(180deg, var(--bg-alt) 0%, rgba(242,247,251,.72) 42%, rgba(242,247,251,0) 72%); }
     .net-panel{ width:auto; right:clamp(24px,6vw,96px); }
   }
+  /* vector clouds that part & fade on entry to reveal the Korea map */
+  .net-clouds{ position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+  .cloud-haze{ position:absolute; inset:-2%; will-change:opacity;
+    background:radial-gradient(128% 96% at 50% 42%,
+      #fff 0%, #fff 40%, rgba(240,246,251,.82) 62%, rgba(240,246,251,.36) 82%, rgba(240,246,251,0) 100%); }
+  .cloud-half{ position:absolute; top:-4%; height:108%; width:74%; will-change:transform,opacity;
+    filter:drop-shadow(0 8px 14px rgba(120,140,170,.16)); }
+  .cloud-left{ left:0; transform-origin:82% 50%; }
+  .cloud-right{ right:0; transform-origin:18% 50%; }
+  .cloud-right .cloud-svg{ transform:scaleX(-1); }
+  .cloud-svg{ position:absolute; inset:0; width:100%; height:100%; display:block; fill:url(#cloudGrad); }
 </style>
 </head>
 <body>
@@ -686,6 +697,37 @@
   <section id="netflow">
     <div class="net-sticky" id="krStage">
       <canvas id="krCanvas"></canvas>
+      <div class="net-clouds" id="netClouds" aria-hidden="true">
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+          <linearGradient id="cloudGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffffff"/>
+            <stop offset="1" stop-color="#d5e1ee"/>
+          </linearGradient>
+          <g id="cl">
+            <ellipse cx="60" cy="82" rx="55" ry="41"/>
+            <ellipse cx="112" cy="58" rx="62" ry="50"/>
+            <ellipse cx="166" cy="84" rx="51" ry="39"/>
+            <rect x="16" y="80" width="200" height="42" rx="21"/>
+          </g>
+        </defs></svg>
+        <div class="cloud-haze"></div>
+        <div class="cloud-half cloud-left">
+          <svg class="cloud-svg" viewBox="0 0 1000 1220" preserveAspectRatio="xMidYMid slice">
+            <use href="#cl" transform="translate(330,40) scale(2.7)"/>
+            <use href="#cl" transform="translate(-60,330) scale(3.2)"/>
+            <use href="#cl" transform="translate(360,650) scale(2.5)"/>
+            <use href="#cl" transform="translate(-90,900) scale(2.9)"/>
+          </svg>
+        </div>
+        <div class="cloud-half cloud-right">
+          <svg class="cloud-svg" viewBox="0 0 1000 1220" preserveAspectRatio="xMidYMid slice">
+            <use href="#cl" transform="translate(300,90) scale(2.9)"/>
+            <use href="#cl" transform="translate(-50,420) scale(2.6)"/>
+            <use href="#cl" transform="translate(340,700) scale(3.0)"/>
+            <use href="#cl" transform="translate(-80,980) scale(2.6)"/>
+          </svg>
+        </div>
+      </div>
       <div class="net-copy">
         <div class="net-panel" data-p="ov">
           <h3 class="net-title" data-ko="서울에서 제주까지,<br>전국을 아우릅니다."
@@ -727,7 +769,7 @@
       <div class="wrap">
         <div class="chat-head">
           <div class="eyebrow" data-ko="프로젝트의 시작" data-en="Where a project begins"></div>
-          <h3 class="big" data-ko="모든 건 대화에서 시작됩니다." data-en="It all starts with a conversation."></h3>
+          <h3 class="big" data-ko="솔루션은 대화로 시작" data-en="It all starts with a conversation."></h3>
         </div>
         <div class="chat-thread">
           <div class="msg sent">
@@ -1622,6 +1664,37 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   };
   tick();
   setInterval(tick, 1000);
+})();
+
+/* vector clouds part & fade to reveal the Korea map as the section scrolls in */
+(() => {
+  const nf = document.getElementById('netflow');
+  const clouds = document.getElementById('netClouds');
+  if (!nf || !clouds) return;
+  const left = clouds.querySelector('.cloud-left');
+  const right = clouds.querySelector('.cloud-right');
+  const haze = clouds.querySelector('.cloud-haze');
+  const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
+  let raf = 0;
+  const update = () => {
+    raf = 0;
+    const r = nf.getBoundingClientRect();
+    const total = r.height - innerHeight;
+    const p = total > 0 ? clamp01(-r.top / total) : 0;
+    const open = easeOut(clamp01(p / 0.12));          // clouds fully parted 12% into the section
+    if (open >= 1) { clouds.style.visibility = 'hidden'; return; }
+    clouds.style.visibility = 'visible';
+    const tf = dir => `translateX(${(dir * 72 * open).toFixed(2)}%) translateY(${(-6 * open).toFixed(2)}%) scale(${(1 + 0.16 * open).toFixed(3)})`;
+    left.style.transform = tf(-1);
+    right.style.transform = tf(1);
+    left.style.opacity = right.style.opacity = (1 - open).toFixed(3);
+    haze.style.opacity = (1 - easeOut(clamp01(p / 0.085))).toFixed(3);
+  };
+  const req = () => { if (!raf) raf = requestAnimationFrame(update); };
+  addEventListener('scroll', req, { passive: true });
+  addEventListener('resize', req);
+  update();
 })();
 
 // count-up stats
