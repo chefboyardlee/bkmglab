@@ -311,7 +311,7 @@
 
   /* ---------- float-up word hero (scroll-pinned, theothersideoftruth-style) ---------- */
   .floatword{ position:relative; height:300vh; background:var(--bg); }
-  .fw-sticky{ position:sticky; top:0; height:100vh; overflow:hidden; background:var(--bg); }
+  .fw-sticky{ position:sticky; top:0; height:100vh; overflow:hidden; background:var(--bg); isolation:isolate; }
   /* black field that rises from the bottom to swallow the pile */
   .fw-fill{ position:absolute; left:0; top:100%; width:100%; height:200%; z-index:1;
     background:linear-gradient(0deg,
@@ -349,7 +349,8 @@
     pointer-events:none; }
   /* header/footer chrome (theothersideoftruth-style) — colour set by JS so it stays legible white→black */
   .fw-ui{ position:absolute; inset:0; z-index:5; pointer-events:none; opacity:0;
-    font-family:'Helvetica Neue','Helvetica',var(--font-head),sans-serif; text-transform:uppercase; }
+    font-family:'Helvetica Neue','Helvetica',var(--font-head),sans-serif; text-transform:uppercase;
+    color:#fff; mix-blend-mode:difference; }
   .fw-ui a{ pointer-events:auto; color:inherit; text-decoration:none; }
   .fw-row{ position:absolute; left:0; right:0; display:flex; align-items:center; justify-content:space-between;
     gap:20px; padding:0 clamp(20px,3.4vw,48px); white-space:nowrap; }
@@ -1576,18 +1577,11 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   const word = document.getElementById('fwword');
   const spans = [...document.querySelectorAll('#fwword span')];
   const ui = document.querySelector('#floatword .fw-ui');
-  const uTop = document.getElementById('fwTop');
-  const uNav = document.getElementById('fwNav');
-  const uFoot = document.getElementById('fwFoot');
   // per-letter horizontal spread (% of own width), mirrored from the reference timeline
   const SPREAD = [-50, 50, 10, -20, -40, 40, 10];
   const T = 1.6, DUR = 1, BG_START = 0.6, RISE = -96;   // vh the letters travel up
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
   const ease = t => 1 - (1 - t) * (1 - t);              // easeOutQuad ~ GSAP power1.out
-  // chrome ink flips dark→light so it reads on the light rest state AND the black flood
-  const DARK = [34, 37, 46], LIGHT = [236, 239, 245];
-  const seg = (a, b, x) => clamp01((x - a) / (b - a));
-  const mix = t => `rgb(${DARK.map((d, i) => Math.round(d + (LIGHT[i] - d) * t)).join(',')})`;
   let raf = 0;
   const update = () => {
     raf = 0;
@@ -1605,23 +1599,9 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
     // the scattered letter pile & chrome gently fade in as the section rises into full view
     const appear = ease(clamp01(1 - rectTop / (innerHeight * 0.9)));
     word.style.opacity = appear.toFixed(3);
-    if (ui) {
-      ui.style.opacity = appear.toFixed(3);
-      // each row flips dark→light as the rising black flood reaches its height: footer (bottom) first,
-      // the centered nav next, the top bar last
-      const tFoot = ease(seg(0.42, 0.60, p));
-      const tNav = ease(seg(0.58, 0.80, p));
-      const tTop = ease(seg(0.80, 0.97, p));
-      // while the ink is still dark it may sit over the dark letter pile — a white halo keeps it separated;
-      // it fades out as the ink flips light over the black flood (where it's not needed)
-      const halo = a => `0 0 8px rgba(255,255,255,${a.toFixed(2)}),0 0 2px rgba(255,255,255,${a.toFixed(2)})`;
-      uFoot.style.color = mix(tFoot);
-      uNav.style.color = mix(tNav);
-      uTop.style.color = mix(tTop);
-      uFoot.style.textShadow = halo(0.6 * (1 - tFoot));
-      uNav.style.textShadow = halo(0.82 * (1 - tNav));
-      uTop.style.textShadow = halo(0.55 * (1 - tTop));
-    }
+    // chrome legibility is handled purely by mix-blend-mode:difference (dark on light, white on the
+    // black letters/flood, at the exact contact edge) — JS only drives the fade-in
+    if (ui) ui.style.opacity = appear.toFixed(3);
   };
   const req = () => { if (!raf) raf = requestAnimationFrame(update); };
   addEventListener('scroll', req, { passive: true });
@@ -1875,11 +1855,18 @@ onNavScroll();
 
 /* ---------- partner ticker ----------
    The CSS scrolls the track to -50%, so the marks must appear exactly twice
-   for the loop to be seamless. Duplicate once, and only once. */
+   for the loop to be seamless. Clone the nodes (don't reset innerHTML — that
+   destroys & reloads the original <img>s, which flashes on load). */
 {
   const track = document.getElementById('tickerTrack');
   if (track && !track.dataset.doubled) {
-    track.innerHTML += track.innerHTML;
+    const frag = document.createDocumentFragment();
+    [...track.children].forEach(n => {
+      const c = n.cloneNode(true);
+      c.setAttribute('aria-hidden', 'true');
+      frag.appendChild(c);
+    });
+    track.appendChild(frag);
     track.dataset.doubled = '1';
   }
 }
