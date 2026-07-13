@@ -276,7 +276,7 @@
   .chat-sec{ position:relative; height:370vh; background:var(--bg);
     --chat-bg:var(--bg); --imsg-sent:#5b82ff; }
   .chat-sticky{ position:sticky; top:0; height:100vh; display:flex; align-items:center; justify-content:center; }
-  .chat-head{ text-align:center; }
+  .chat-head{ text-align:center; opacity:0; will-change:opacity, transform; }
   .chat-head .eyebrow{ justify-content:center; }
   .chat-head h3.big{ max-width:none; margin:0 auto; font-size:clamp(16px,2vw,26px); white-space:nowrap; }
   .chat-thread{ max-width:540px; margin:46px auto 0; display:flex; flex-direction:column; }
@@ -314,7 +314,16 @@
   .fw-sticky{ position:sticky; top:0; height:100vh; overflow:hidden; background:var(--bg); }
   /* black field that rises from the bottom to swallow the pile */
   .fw-fill{ position:absolute; left:0; top:100%; width:100%; height:200%; z-index:1;
-    background:linear-gradient(0deg, var(--dark) 62%, rgba(8,11,24,0)); will-change:transform; }
+    background:linear-gradient(0deg,
+      var(--dark) 58%,
+      rgba(8,11,24,.92) 68%,
+      rgba(8,11,24,.72) 76%,
+      rgba(8,11,24,.48) 83%,
+      rgba(8,11,24,.26) 89%,
+      rgba(8,11,24,.11) 94%,
+      rgba(8,11,24,.03) 97.5%,
+      rgba(8,11,24,0) 100%);
+    will-change:transform; }
   /* staggered, overlapping pile of letters (theothersideoftruth-style) */
   .fw-word{ position:absolute; inset:0; z-index:2;
     font-family:var(--font-head); font-weight:800; color:var(--dark); line-height:.8; letter-spacing:-.04em; }
@@ -328,8 +337,36 @@
   .fw-word span:nth-child(6){ left:71%; top:54%; font-size:27vw; --rot:6deg; }
   .fw-word span:nth-child(7){ left:37%; top:64%; font-size:30vw; --rot:-11deg; }
   /* black veil at the bottom so letter feet dissolve into the rising field */
-  .fw-sticky:after{ content:""; position:absolute; left:0; bottom:-1px; width:100%; height:36%; z-index:3;
-    background:linear-gradient(0deg, var(--dark) 22%, rgba(8,11,24,0)); pointer-events:none; }
+  .fw-sticky:after{ content:""; position:absolute; left:0; bottom:-1px; width:100%; height:46%; z-index:3;
+    background:linear-gradient(0deg,
+      rgba(8,11,24,.52) 0%,
+      rgba(8,11,24,.36) 20%,
+      rgba(8,11,24,.22) 40%,
+      rgba(8,11,24,.12) 58%,
+      rgba(8,11,24,.05) 74%,
+      rgba(8,11,24,.015) 88%,
+      rgba(8,11,24,0) 100%);
+    pointer-events:none; }
+  /* header/footer chrome (theothersideoftruth-style) — colour set by JS so it stays legible white→black */
+  .fw-ui{ position:absolute; inset:0; z-index:5; pointer-events:none; opacity:0;
+    font-family:'Helvetica Neue','Helvetica',var(--font-head),sans-serif; text-transform:uppercase; }
+  .fw-ui a{ pointer-events:auto; color:inherit; text-decoration:none; }
+  .fw-row{ position:absolute; left:0; right:0; display:flex; align-items:center; justify-content:space-between;
+    gap:20px; padding:0 clamp(20px,3.4vw,48px); white-space:nowrap; }
+  .fw-top{ top:clamp(70px,9vh,104px); font-size:11px; font-weight:500; letter-spacing:.05em; }
+  .fw-top .fw-hash{ font-weight:800; letter-spacing:.02em; }
+  .fw-top b{ font-weight:700; }
+  .fw-nav{ top:50%; transform:translateY(-50%); font-size:13px; font-weight:600; letter-spacing:.05em; }
+  .fw-nav a{ transition:opacity .25s; }
+  .fw-nav a:hover{ opacity:.5; }
+  .fw-foot{ bottom:26px; font-size:12px; font-weight:600; letter-spacing:.05em; }
+  .fw-foot .fw-num{ font-weight:800; letter-spacing:.02em; }
+  @media (max-width:860px){
+    .fw-top{ font-size:9px; gap:10px; letter-spacing:.03em; }
+    .fw-top span:nth-child(3), .fw-top span:nth-child(4){ display:none; }
+    .fw-nav{ font-size:11px; gap:8px; }
+    .fw-foot{ font-size:10px; }
+  }
 
   /* ---------- round carousel (3D brand ring) ---------- */
   .ring-stage{
@@ -687,7 +724,7 @@
   <section class="chat-sec" id="consult">
     <div class="chat-sticky">
       <div class="wrap">
-        <div class="reveal chat-head">
+        <div class="chat-head">
           <div class="eyebrow" data-ko="프로젝트의 시작" data-en="Where a project begins"></div>
           <h3 class="big" data-ko="모든 건 전화 한 통에서 시작됩니다." data-en="It all begins with a call."></h3>
         </div>
@@ -718,6 +755,21 @@
     <div class="fw-sticky">
       <div class="fw-fill" id="fwfill"></div>
       <div class="fw-word" id="fwword"><span>b</span><span>k</span><span>m</span><span>g</span><span>L</span><span>a</span><span>b</span></div>
+      <div class="fw-ui">
+        <div class="fw-row fw-top" id="fwTop">
+          <span class="fw-hash">#YOURKITCHENSOLUTIONSPARTNER</span>
+          <span>THE INFORMATION HAS BEEN UPDATED: <b id="fwDate">—</b></span>
+          <span>LOCAL TIME [SOUTH KOREA] <b id="fwKR">--:--:--</b></span>
+          <span>LOCAL TIME [CALIFORNIA] <b id="fwCA">--:--:--</b></span>
+        </div>
+        <nav class="fw-row fw-nav" id="fwNav">
+          <a href="#">/BUNN</a><a href="#">/TURBOCHEF</a><a href="#">/FIRE</a><a href="#">/HOUNÖ</a><a href="#">/ANTUNES</a><a href="#contact">/SUPPORT</a>
+        </nav>
+        <div class="fw-row fw-foot" id="fwFoot">
+          <span>SINCE 1988, YOUR PARTNER FOR KITCHEN SOLUTIONS</span>
+          <span class="fw-num">3933</span>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1495,12 +1547,19 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   const sec = document.getElementById('consult');
   if (!sec) return;
   const msgs = [...sec.querySelectorAll('.msg')];
+  const head = sec.querySelector('.chat-head');
   const thr = [0.12, 0.34, 0.56, 0.80];    // scroll progress at which each message pops
   let raf = 0;
+  const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
   const update = () => {
     raf = 0;
+    const rectTop = sec.getBoundingClientRect().top;
     const total = sec.offsetHeight - innerHeight;
-    const p = total > 0 ? Math.min(Math.max(-sec.getBoundingClientRect().top, 0), total) / total : 0;
+    const p = total > 0 ? clamp01(-rectTop / total) : 0;
+    // heading fades in gently as the section rises into view, full opacity as it locks into full view
+    const hp = clamp01(1 - rectTop / (innerHeight * 0.85));
+    head.style.opacity = hp.toFixed(3);
+    head.style.transform = 'translateY(' + ((1 - hp) * 16).toFixed(1) + 'px)';
     msgs.forEach((m, i) => m.classList.toggle('show', p >= thr[i]));
   };
   const req = () => { if (!raf) raf = requestAnimationFrame(update); };
@@ -1514,17 +1573,27 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   const sec = document.getElementById('floatword');
   if (!sec) return;
   const fill = document.getElementById('fwfill');
+  const word = document.getElementById('fwword');
   const spans = [...document.querySelectorAll('#fwword span')];
+  const ui = document.querySelector('#floatword .fw-ui');
+  const uTop = document.getElementById('fwTop');
+  const uNav = document.getElementById('fwNav');
+  const uFoot = document.getElementById('fwFoot');
   // per-letter horizontal spread (% of own width), mirrored from the reference timeline
   const SPREAD = [-50, 50, 10, -20, -40, 40, 10];
   const T = 1.6, DUR = 1, BG_START = 0.6, RISE = -96;   // vh the letters travel up
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
   const ease = t => 1 - (1 - t) * (1 - t);              // easeOutQuad ~ GSAP power1.out
+  // chrome ink flips dark→light so it reads on the light rest state AND the black flood
+  const DARK = [34, 37, 46], LIGHT = [236, 239, 245];
+  const seg = (a, b, x) => clamp01((x - a) / (b - a));
+  const mix = t => `rgb(${DARK.map((d, i) => Math.round(d + (LIGHT[i] - d) * t)).join(',')})`;
   let raf = 0;
   const update = () => {
     raf = 0;
     const total = sec.offsetHeight - innerHeight;
-    const p = total > 0 ? clamp01(-sec.getBoundingClientRect().top / total) : 0;
+    const rectTop = sec.getBoundingClientRect().top;
+    const p = total > 0 ? clamp01(-rectTop / total) : 0;
     const t = p * T;
     spans.forEach((s, i) => {
       const lp = ease(clamp01((t - i * 0.1) / DUR));
@@ -1533,11 +1602,46 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
     });
     const bp = ease(clamp01((t - BG_START) / DUR));
     fill.style.transform = `translateY(${(-85 * bp).toFixed(2)}%)`;
+    // the scattered letter pile & chrome gently fade in as the section rises into full view
+    const appear = ease(clamp01(1 - rectTop / (innerHeight * 0.9)));
+    word.style.opacity = appear.toFixed(3);
+    if (ui) {
+      ui.style.opacity = appear.toFixed(3);
+      // each row flips dark→light as the rising black flood reaches its height: footer (bottom) first,
+      // the centered nav next, the top bar last
+      const tFoot = ease(seg(0.42, 0.60, p));
+      const tNav = ease(seg(0.58, 0.80, p));
+      const tTop = ease(seg(0.80, 0.97, p));
+      // while the ink is still dark it may sit over the dark letter pile — a white halo keeps it separated;
+      // it fades out as the ink flips light over the black flood (where it's not needed)
+      const halo = a => `0 0 8px rgba(255,255,255,${a.toFixed(2)}),0 0 2px rgba(255,255,255,${a.toFixed(2)})`;
+      uFoot.style.color = mix(tFoot);
+      uNav.style.color = mix(tNav);
+      uTop.style.color = mix(tTop);
+      uFoot.style.textShadow = halo(0.6 * (1 - tFoot));
+      uNav.style.textShadow = halo(0.82 * (1 - tNav));
+      uTop.style.textShadow = halo(0.55 * (1 - tTop));
+    }
   };
   const req = () => { if (!raf) raf = requestAnimationFrame(update); };
   addEventListener('scroll', req, { passive: true });
   addEventListener('resize', req);
   update();
+
+  // "last updated" date + live local clocks for Korea & California
+  const dEl = document.getElementById('fwDate');
+  const krEl = document.getElementById('fwKR');
+  const caEl = document.getElementById('fwCA');
+  if (dEl) dEl.textContent = new Intl.DateTimeFormat('en-US',
+    { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date()).toUpperCase();
+  const clock = tz => new Intl.DateTimeFormat('en-GB',
+    { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
+  const tick = () => {
+    if (krEl) krEl.textContent = clock('Asia/Seoul');
+    if (caEl) caEl.textContent = clock('America/Los_Angeles');
+  };
+  tick();
+  setInterval(tick, 1000);
 })();
 
 // count-up stats
