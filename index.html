@@ -531,7 +531,7 @@
     .net-panel{ width:auto; right:clamp(24px,6vw,96px); }
   }
   /* vector clouds that part & fade on entry to reveal the Korea map */
-  .net-clouds{ position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+  .net-clouds{ position:fixed; inset:0; z-index:60; pointer-events:none; overflow:hidden; visibility:hidden; }
   .cloud-haze{ position:absolute; inset:-2%; will-change:opacity;
     background:radial-gradient(128% 96% at 50% 42%,
       #fff 0%, #fff 40%, rgba(240,246,251,.82) 62%, rgba(240,246,251,.36) 82%, rgba(240,246,251,0) 100%); }
@@ -696,21 +696,6 @@
   <section id="netflow">
     <div class="net-sticky" id="krStage">
       <canvas id="krCanvas"></canvas>
-      <div class="net-clouds" id="netClouds" aria-hidden="true">
-        <div class="cloud-haze"></div>
-        <div class="cloud-half cloud-left">
-          <img src="assets/clouds/cloud-d.png" style="left:2vw;  top:24%; width:42vw">
-          <img src="assets/clouds/cloud-a.png" style="left:16vw; top:0%;  width:36vw">
-          <img src="assets/clouds/cloud-b.png" style="left:-4vw; top:58%; width:40vw">
-          <img src="assets/clouds/cloud-a.png" class="flip" style="left:30vw; top:42%; width:30vw">
-        </div>
-        <div class="cloud-half cloud-right">
-          <img src="assets/clouds/cloud-b.png" style="right:4vw;  top:20%; width:44vw">
-          <img src="assets/clouds/cloud-a.png" class="flip" style="right:14vw; top:-2%; width:36vw">
-          <img src="assets/clouds/cloud-d.png" style="right:-4vw; top:54%; width:42vw">
-          <img src="assets/clouds/cloud-b.png" class="flip" style="right:28vw; top:38%; width:30vw">
-        </div>
-      </div>
       <div class="net-copy">
         <div class="net-panel" data-p="ov">
           <h3 class="net-title" data-ko="서울에서 제주까지,<br>전국을 아우릅니다."
@@ -850,6 +835,23 @@
   </footer>
 
 </main>
+
+<!-- viewport-fixed cloud curtain: rolls in over the end of the Brands Universe section and parts to reveal the Korea map -->
+<div class="net-clouds" id="netClouds" aria-hidden="true">
+  <div class="cloud-haze"></div>
+  <div class="cloud-half cloud-left">
+    <img src="assets/clouds/cloud5.png" style="left:-3vw; top:20%; width:44vw">
+    <img src="assets/clouds/cloud1.png" style="left:14vw; top:-4%; width:38vw">
+    <img src="assets/clouds/cloud4.png" style="left:-6vw; top:56%; width:42vw">
+    <img src="assets/clouds/cloud2.png" class="flip" style="left:26vw; top:40%; width:34vw">
+  </div>
+  <div class="cloud-half cloud-right">
+    <img src="assets/clouds/cloud3.png" style="right:-3vw; top:16%; width:44vw">
+    <img src="assets/clouds/cloud6.png" class="flip" style="right:12vw; top:-6%; width:38vw">
+    <img src="assets/clouds/cloud2.png" style="right:-6vw; top:52%; width:42vw">
+    <img src="assets/clouds/cloud1.png" class="flip" style="right:26vw; top:38%; width:34vw">
+  </div>
+</div>
 
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/" } }
@@ -1663,19 +1665,19 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   const update = () => {
     raf = 0;
     const r = nf.getBoundingClientRect();
-    // drive off raw rect.top so the parting BEGINS while the section is still rising into view
-    // (r.top = A, section ~40% in), is only partway done at the pin, and finishes a bit into the
-    // pinned scroll (r.top = B) — so the reveal is still visible while the map is centered
-    const A = innerHeight * 0.62;
-    const B = -innerHeight * 0.95;
-    const open = easeInOut(clamp01((A - r.top) / (A - B)));
-    if (open >= 1) { clouds.style.visibility = 'hidden'; return; }
+    const iH = innerHeight;
+    // the curtain fades in over the TAIL of the previous (Brands Universe) section...
+    const appear = clamp01((1.15 * iH - r.top) / (0.33 * iH));
+    // ...then parts smoothly as the map rises, fully parted by the time it's in full view (r.top = 0)
+    const open = easeInOut(clamp01((0.82 * iH - r.top) / (0.82 * iH)));
+    if (appear <= 0 || open >= 1) { clouds.style.visibility = 'hidden'; return; }
     clouds.style.visibility = 'visible';
+    clouds.style.opacity = appear.toFixed(3);
     const tf = dir => `translateX(${(dir * 74 * open).toFixed(2)}%) translateY(${(-6 * open).toFixed(2)}%) scale(${(1 + 0.16 * open).toFixed(3)})`;
     left.style.transform = tf(-1);
     right.style.transform = tf(1);
     left.style.opacity = right.style.opacity = (1 - open).toFixed(3);
-    haze.style.opacity = clamp01(1 - open / 0.6).toFixed(3);
+    haze.style.opacity = clamp01(1 - open / 0.55).toFixed(3);
   };
   const req = () => { if (!raf) raf = requestAnimationFrame(update); };
   addEventListener('scroll', req, { passive: true });
