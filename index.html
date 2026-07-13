@@ -532,14 +532,13 @@
   }
   /* vector clouds that part & fade on entry to reveal the Korea map */
   .net-clouds{ position:fixed; inset:0; z-index:45; pointer-events:none; overflow:hidden; visibility:hidden; }
-  .cloud-haze{ position:absolute; inset:-2%; will-change:opacity;
-    background:radial-gradient(150% 130% at 50% 45%,
-      #fff 0%, #fff 60%, rgba(245,249,252,.92) 78%, rgba(245,249,252,.55) 90%, rgba(245,249,252,0) 100%); }
-  .cloud-half{ position:absolute; top:-4%; height:108%; width:74%; will-change:transform,opacity; }
-  .cloud-left{ left:0; transform-origin:82% 50%; }
-  .cloud-right{ right:0; transform-origin:18% 50%; }
-  .cloud-half img{ position:absolute; height:auto; display:block; user-select:none;
-    filter:blur(.5px) drop-shadow(0 10px 24px rgba(150,180,215,.26)); }
+  .cloud-haze{ position:absolute; left:-6%; right:-6%; bottom:0; height:84%; will-change:transform;
+    background:linear-gradient(0deg,
+      #fff 0%, #fff 46%, rgba(245,249,252,.92) 66%, rgba(245,249,252,.5) 84%, rgba(245,249,252,0) 100%); }
+  .cloud-layer{ position:absolute; inset:0; transform-origin:50% 100%; will-change:transform,opacity; }
+  .cloud-layer img{ position:absolute; height:auto; display:block; user-select:none; }
+  .cloud-front img{ filter:blur(.5px) drop-shadow(0 12px 26px rgba(150,180,215,.28)); }
+  .cloud-back img{ filter:blur(1.4px) drop-shadow(0 8px 18px rgba(150,180,215,.20)); opacity:.82; }
 </style>
 </head>
 <body>
@@ -837,20 +836,23 @@
 
 <!-- viewport-fixed cloud curtain: rolls in over the end of the Brands Universe section and parts to reveal the Korea map -->
 <div class="net-clouds" id="netClouds" aria-hidden="true">
-  <div class="cloud-haze"></div>
-  <div class="cloud-half cloud-left">
-    <img src="assets/clouds/cloud5.png" style="left:-5vw;  top:12%; width:43vw; transform:rotate(-3deg)">
-    <img src="assets/clouds/cloud1.png" style="left:21vw;  top:-7%; width:31vw; transform:rotate(5deg)">
-    <img src="assets/clouds/cloud4.png" style="left:-9vw;  top:53%; width:47vw; transform:rotate(2deg)">
-    <img src="assets/clouds/cloud3.png" style="left:25vw;  top:33%; width:29vw; transform:scaleX(-1) rotate(4deg)">
-    <img src="assets/clouds/cloud6.png" style="left:6vw;   top:74%; width:35vw; transform:rotate(-2deg)">
+  <div class="cloud-haze" id="cloudHaze"></div>
+  <!-- background: smaller, softer, dimmer clouds forming the upper edge of the bank (parallax: rises less) -->
+  <div class="cloud-layer cloud-back" id="cloudBack">
+    <img src="assets/clouds/cloud1.png" style="left:3%;  top:30%; width:22vw">
+    <img src="assets/clouds/cloud3.png" style="left:27%; top:24%; width:24vw; transform:scaleX(-1)">
+    <img src="assets/clouds/cloud6.png" style="left:53%; top:28%; width:22vw">
+    <img src="assets/clouds/cloud1.png" style="left:78%; top:26%; width:20vw; transform:scaleX(-1)">
+    <img src="assets/clouds/cloud3.png" style="left:15%; top:42%; width:20vw">
+    <img src="assets/clouds/cloud6.png" style="left:64%; top:43%; width:20vw; transform:scaleX(-1)">
   </div>
-  <div class="cloud-half cloud-right">
-    <img src="assets/clouds/cloud2.png" style="right:-6vw; top:8%;  width:47vw; transform:rotate(2deg)">
-    <img src="assets/clouds/cloud6.png" style="right:17vw; top:-5%; width:29vw; transform:scaleX(-1) rotate(-5deg)">
-    <img src="assets/clouds/cloud1.png" style="right:-7vw; top:47%; width:41vw; transform:scaleX(-1) rotate(3deg)">
-    <img src="assets/clouds/cloud4.png" style="right:23vw; top:31%; width:31vw; transform:rotate(-4deg)">
-    <img src="assets/clouds/cloud5.png" style="right:3vw;  top:70%; width:37vw; transform:scaleX(-1) rotate(2deg)">
+  <!-- foreground: larger, sharper clouds anchored low (parallax: rises more) -->
+  <div class="cloud-layer cloud-front" id="cloudFront">
+    <img src="assets/clouds/cloud5.png" style="left:-5%; top:54%; width:47vw">
+    <img src="assets/clouds/cloud2.png" style="left:33%; top:61%; width:49vw; transform:scaleX(-1)">
+    <img src="assets/clouds/cloud5.png" style="left:66%; top:53%; width:44vw; transform:scaleX(-1)">
+    <img src="assets/clouds/cloud4.png" style="left:-9%; top:75%; width:41vw">
+    <img src="assets/clouds/cloud2.png" style="left:49%; top:78%; width:46vw">
   </div>
 </div>
 
@@ -1657,30 +1659,30 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   const nf = document.getElementById('netflow');
   const clouds = document.getElementById('netClouds');
   if (!nf || !clouds) return;
-  const left = clouds.querySelector('.cloud-left');
-  const right = clouds.querySelector('.cloud-right');
-  const haze = clouds.querySelector('.cloud-haze');
+  const front = document.getElementById('cloudFront');
+  const back = document.getElementById('cloudBack');
+  const haze = document.getElementById('cloudHaze');
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  const easeOut = t => 1 - Math.pow(1 - t, 3);
   const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   let raf = 0;
   const update = () => {
     raf = 0;
     const r = nf.getBoundingClientRect();
     const iH = innerHeight;
-    // the curtain snaps to FULLY SOLID quickly over the tail of the previous section (with a subtle
-    // settle-in so it isn't a dead crossfade)...
-    const appear = clamp01((1.18 * iH - r.top) / (0.16 * iH));
-    // ...then parts AND fades away as the map rises, fully gone by the time it's in full view (r.top = 0)
-    const open = easeInOut(clamp01((0.98 * iH - r.top) / (0.98 * iH)));
-    if (appear <= 0 || open >= 1) { clouds.style.visibility = 'hidden'; return; }
+    // PHASE 1 — rise up from below to cover the bottom ~3/4 (at full opacity)
+    const rise = easeOut(clamp01((1.30 * iH - r.top) / (0.58 * iH)));   // 0 (below) -> 1 (risen)
+    // PHASE 2 — then fade out & disperse as you keep scrolling; fully gone at full view (r.top = 0)
+    const fade = easeInOut(clamp01((0.60 * iH - r.top) / (0.60 * iH)));
+    if (rise <= 0 || fade >= 1) { clouds.style.visibility = 'hidden'; return; }
     clouds.style.visibility = 'visible';
-    clouds.style.opacity = appear.toFixed(3);
-    clouds.style.transform = `scale(${(1 + 0.05 * (1 - appear)).toFixed(3)})`;   // gentle settle on entrance
-    const tf = dir => `translateX(${(dir * 74 * open).toFixed(2)}%) translateY(${(-6 * open).toFixed(2)}%) scale(${(1 + 0.18 * open).toFixed(3)})`;
-    left.style.transform = tf(-1);
-    right.style.transform = tf(1);
-    left.style.opacity = right.style.opacity = (1 - open).toFixed(3);
-    haze.style.opacity = clamp01(1 - open / 0.5).toFixed(3);
+    // parallax: the large front bank travels further than the small back bank; both lift & spread while fading
+    const frontY = (1 - rise) * 124 - fade * 16;
+    const backY  = (1 - rise) * 100 - fade * 10;
+    front.style.transform = `translateY(${frontY.toFixed(1)}%) scale(${(1 + 0.20 * fade).toFixed(3)})`;
+    back.style.transform  = `translateY(${backY.toFixed(1)}%) scale(${(1 + 0.12 * fade).toFixed(3)})`;
+    haze.style.transform  = `translateY(${((1 - rise) * 100 - fade * 22).toFixed(1)}%)`;
+    clouds.style.opacity  = (1 - fade).toFixed(3);
   };
   const req = () => { if (!raf) raf = requestAnimationFrame(update); };
   addEventListener('scroll', req, { passive: true });
