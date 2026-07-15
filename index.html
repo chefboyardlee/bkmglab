@@ -316,7 +316,10 @@
     background:var(--chat-bg);
     border-radius:clamp(30px,3.2vw,46px);
     padding:clamp(30px,4.5vh,54px) clamp(20px,2.8vw,42px);
-    box-shadow:0 36px 90px -42px rgba(11,16,32,.32), 0 0 0 1px rgba(11,16,32,.05); }
+    box-shadow:0 36px 90px -42px rgba(11,16,32,.32), 0 0 0 1px rgba(11,16,32,.05);
+    /* the screen fades in and rises from below, fully landed as the first
+       message pops — opacity/transform driven per-frame from scroll */
+    opacity:0; will-change:opacity,transform; }
   .msg{ display:flex; flex-direction:column; max-width:80%; margin-top:clamp(22px,3.6vh,42px); }
   .msg:first-child{ margin-top:0; }
   .msg.cont{ margin-top:10px; }   /* consecutive bubble from the same sender */
@@ -1683,6 +1686,7 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   if (!sec) return;
   const msgs = [...sec.querySelectorAll('.msg')];
   const head = sec.querySelector('.chat-head');
+  const thread = sec.querySelector('.chat-thread');
   const thr = [0.12, 0.34, 0.56, 0.80];    // scroll progress at which each message pops
   let raf = 0;
   const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -1695,6 +1699,11 @@ document.querySelectorAll('.reveal').forEach(el => io.observe(el));
     const hp = clamp01(1 - rectTop / (innerHeight * 0.85));
     head.style.opacity = hp.toFixed(3);
     head.style.transform = 'translateY(' + ((1 - hp) * 16).toFixed(1) + 'px)';
+    // phone screen rises from the bottom and fades in, fully landed exactly
+    // when the first message pops (thr[0])
+    const te = 1 - Math.pow(1 - clamp01(p / thr[0]), 3);
+    thread.style.opacity = te.toFixed(3);
+    thread.style.transform = 'translateY(' + ((1 - te) * 150).toFixed(1) + 'px)';
     msgs.forEach((m, i) => m.classList.toggle('show', p >= thr[i]));
   };
   const req = () => { if (!raf) raf = requestAnimationFrame(update); };
