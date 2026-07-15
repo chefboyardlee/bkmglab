@@ -25,6 +25,7 @@
 
     --bg:#e8f0f7;          /* must match scene C.bg */
     --bg-alt:#f2f7fb;
+    --ocean:#d4e9fc;       /* baby-blue sea behind the Korea map */
     --paper:#fbfcfd;
     --ink:#0b1020;
     --ink-2:#3d4757;
@@ -557,24 +558,31 @@
   }
   @media(max-width:700px){ .fgrid{grid-template-columns:1fr} .fbot{flex-direction:column;gap:8px} }
   /* ---------- nationwide service network — scroll-driven map story ---------- */
-  #netflow{ position:relative; height:520vh; background:var(--bg-alt); }   /* overview + 4 phases */
-  /* soft fade from the paper section above into bg-alt, so the seam isn't a hard line.
-     long, eased multi-stop so the gradient never ends on a visible mach band */
-  #netflow::before{ content:""; position:absolute; left:0; top:0; width:100%; height:150vh; z-index:0;
+  /* ocean floor: baby blue for the sea around the country, easing back to the
+     chat section's tone over the last stretch so the exit seam stays soft too */
+  #netflow{ position:relative; height:520vh;
+    background:linear-gradient(180deg, var(--ocean) 0%, var(--ocean) 86%, var(--bg) 98%); }
+  /* soft fade from the paper section above into the ocean — a long paper veil
+     dissolving over the blue, eased so it never ends on a visible mach band */
+  #netflow::before{ content:""; position:absolute; left:0; top:0; width:100%; height:170vh; z-index:0;
     background:linear-gradient(to bottom,
       var(--paper) 0%,
-      rgba(251,252,253,.94) 12%,
-      rgba(249,251,252,.74) 30%,
-      rgba(246,249,252,.48) 50%,
-      rgba(244,248,251,.26) 68%,
-      rgba(243,247,251,.10) 84%,
-      rgba(242,247,251,0) 100%);
+      rgba(251,252,253,.95) 10%,
+      rgba(251,252,253,.82) 26%,
+      rgba(251,252,253,.62) 44%,
+      rgba(251,252,253,.40) 62%,
+      rgba(251,252,253,.20) 78%,
+      rgba(251,252,253,.07) 90%,
+      rgba(251,252,253,0) 100%);
     pointer-events:none; }
   .net-sticky{ position:sticky; top:0; height:100vh; height:100svh; overflow:hidden; }
   .net-sticky canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
   /* left scrim so the copy always reads over the map */
   .net-copy{ position:absolute; inset:0; pointer-events:none; display:flex; align-items:center;
-    background:linear-gradient(90deg, var(--bg-alt) 0%, var(--bg-alt) 20%, rgba(242,247,251,0) 52%); }
+    background:linear-gradient(90deg,
+      rgba(212,233,252,var(--scrimA,0)) 0%,
+      rgba(212,233,252,var(--scrimA,0)) 20%,
+      rgba(212,233,252,0) 52%); }
   .net-panel{ position:absolute; left:clamp(24px,6vw,96px); width:min(430px,44vw);
     opacity:0; transform:translateY(20px); transition:opacity .7s ease, transform .7s ease; }
   .net-panel.on{ opacity:1; transform:none; }
@@ -583,7 +591,10 @@
   .net-sub{ margin-top:18px; max-width:32ch; color:var(--ink-2); font-size:15px; line-height:1.72; }
   @media(max-width:700px){
     .net-copy{ align-items:flex-start; padding-top:11vh;
-      background:linear-gradient(180deg, var(--bg-alt) 0%, rgba(242,247,251,.72) 42%, rgba(242,247,251,0) 72%); }
+      background:linear-gradient(180deg,
+        rgba(212,233,252,var(--scrimA,0)) 0%,
+        rgba(212,233,252,calc(var(--scrimA,0)*.72)) 42%,
+        rgba(212,233,252,0) 72%); }
     .net-panel{ width:auto; right:clamp(24px,6vw,96px); }
   }
   /* vector clouds that part & fade on entry to reveal the Korea map */
@@ -2316,6 +2327,7 @@ if (canvas && stage) {
   };
 
   const panels=[...document.querySelectorAll('.net-panel')];
+  const copyEl=document.querySelector('.net-copy');
   let activePanel=-1;
   let curT=KF[0].t.clone(), curFr=KF[0].fr, curPan=KF[0].pan;
 
@@ -2333,6 +2345,9 @@ if (canvas && stage) {
     if(!visible) return;
 
     const d=desired();
+    // the copy scrim would otherwise paint a hard-edged ocean block the moment
+    // the section enters — fade it in as the stage pins instead
+    copyEl.style.setProperty('--scrimA', clamp01(-netflow.getBoundingClientRect().top/(innerHeight*0.5)).toFixed(3));
     curT.lerp(d.target,0.14); curFr+=(d.fr-curFr)*0.14; curPan+=(d.pan-curPan)*0.14;
     const look=curT.clone();
     // portrait: widen the frustum so the country isn't cropped, and since the
