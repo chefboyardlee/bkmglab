@@ -305,12 +305,18 @@
 
   /* ---------- iMessage-style consult chat (pinned, scroll-driven) ---------- */
   .chat-sec{ position:relative; height:370vh; background:var(--bg);
-    --chat-bg:var(--bg); --imsg-sent:#5b82ff; }
+    --chat-bg:#fdfdfe; --imsg-sent:#5b82ff; --imsg-recv:#e9eef5; }
   .chat-sticky{ position:sticky; top:0; height:100vh; height:100svh; display:flex; align-items:center; justify-content:center; }
   .chat-head{ text-align:center; opacity:0; will-change:opacity, transform; }
   .chat-head .eyebrow{ justify-content:center; }
   .chat-head h3.big{ max-width:none; margin:0 auto; font-size:clamp(16px,2vw,26px); white-space:nowrap; }
-  .chat-thread{ max-width:540px; margin:46px auto 0; display:flex; flex-direction:column; }
+  /* the thread lives on a phone screen: white rounded-corner slab, like the
+     display of a handset lying on the page */
+  .chat-thread{ max-width:620px; margin:46px auto 0; display:flex; flex-direction:column;
+    background:var(--chat-bg);
+    border-radius:clamp(30px,3.2vw,46px);
+    padding:clamp(30px,4.5vh,54px) clamp(20px,2.8vw,42px);
+    box-shadow:0 36px 90px -42px rgba(11,16,32,.32), 0 0 0 1px rgba(11,16,32,.05); }
   .msg{ display:flex; flex-direction:column; max-width:80%; margin-top:clamp(22px,3.6vh,42px); }
   .msg:first-child{ margin-top:0; }
   .msg.cont{ margin-top:10px; }   /* consecutive bubble from the same sender */
@@ -323,14 +329,14 @@
   .bubble{ position:relative; padding:14px 21px; font-size:16px; line-height:1.5;
     border-radius:27px; word-break:keep-all; }
   .msg.sent .bubble{ background:var(--imsg-sent); color:#fff; box-shadow:0 5px 16px rgba(91,130,255,.32); }
-  .msg.recv .bubble{ background:#fff; color:var(--ink); box-shadow:0 4px 14px rgba(11,16,32,.10); }
+  .msg.recv .bubble{ background:var(--imsg-recv); color:var(--ink); box-shadow:0 4px 14px rgba(11,16,32,.06); }
   /* iMessage tails (two-pseudo mask; ::after matches the section background) — bigger + rounder */
   .msg.sent .bubble::before{ content:""; position:absolute; z-index:0; bottom:0; right:-9px;
     height:22px; width:23px; background:var(--imsg-sent); border-bottom-left-radius:20px; }
   .msg.sent .bubble::after{ content:""; position:absolute; z-index:1; bottom:0; right:-23px;
     height:22px; width:28px; background:var(--chat-bg); border-bottom-left-radius:15px; }
   .msg.recv .bubble::before{ content:""; position:absolute; z-index:0; bottom:0; left:-9px;
-    height:22px; width:23px; background:#fff; border-bottom-right-radius:20px; }
+    height:22px; width:23px; background:var(--imsg-recv); border-bottom-right-radius:20px; }
   .msg.recv .bubble::after{ content:""; position:absolute; z-index:1; bottom:0; left:-23px;
     height:22px; width:28px; background:var(--chat-bg); border-bottom-right-radius:15px; }
   .msg .stamp{ font-family:var(--font-head); font-size:10.5px; color:var(--ink-soft);
@@ -857,7 +863,7 @@
           <span>LOCAL TIME [CALIFORNIA] <b id="fwCA">--:--:--</b></span>
         </div>
         <nav class="fw-row fw-nav" id="fwNav">
-          <a href="#">/BUNN</a><a href="#">/TURBOCHEF</a><a href="#">/FIRE</a><a href="#">/HOUNÖ</a><a href="#">/ANTUNES</a><a href="#contact">/SUPPORT</a>
+          <a href="#">/BUNN</a><a href="#">/TURBOCHEF</a><a href="#">/FIRE</a><a href="#">/HOUNÖ</a><a href="#">/ANTUNES</a><a href="#">/FBD</a><a href="#contact">/SUPPORT</a>
         </nav>
         <div class="fw-row fw-foot" id="fwFoot">
           <span>SINCE 1988, YOUR PARTNER FOR KITCHEN SOLUTIONS</span>
